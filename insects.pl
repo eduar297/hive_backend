@@ -106,10 +106,10 @@ init_insects():-
     assert(insect(grasshopper, 2, p2, none, none)),
     assert(insect(grasshopper, 3, p2, none, none)),
 
-    assert(insect(spyder, 1, p1, none, none)),
-    assert(insect(spyder, 2, p1, none, none)),
-    assert(insect(spyder, 1, p2, none, none)),
-    assert(insect(spyder, 2, p2, none, none)),
+    assert(insect(spider, 1, p1, none, none)),
+    assert(insect(spider, 2, p1, none, none)),
+    assert(insect(spider, 1, p2, none, none)),
+    assert(insect(spider, 2, p2, none, none)),
 
     assert(insect(soldier_ant, 1, p1, none, none)),
     assert(insect(soldier_ant, 2, p1, none, none)),
