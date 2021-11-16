@@ -97,11 +97,7 @@ are_neighbors(Hex1, Hex2):-
 anti_neighborhood(L1, L2, L3):-
     findall(X, (member(X, L1),not(be_a_neighbor(X, L2))), L3).
 
+% if Hex is a neighbor of any hexagon in Hexs
 be_a_neighbor(Hex, Hexs):-
     member(H, Hexs),
     are_neighbors(Hex, H),!.
-
-
-
-
-% anti_neighborhood([[-1,1],[-1,3],[0,3],[1,0],[1,1],[1,2]], [[0,0],[-1,2]], X).

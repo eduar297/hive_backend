@@ -18,7 +18,7 @@
 
 % --------------------------------------DYNAMICS--------------------------------------
 :-dynamic insect/5.
-% insect(Type, Id, PlayerId, Hex=[Q,R], Over = none or hexagon or insect)
+% insect(Type, Id, PlayerId, Hex=[Q,R], Placed)
 
 % other player id
 other_player(p1, p2).
@@ -53,20 +53,20 @@ possible_placements(Player_id, Number_of_moves, Placements):-
     var(Placements),
     other_player(Player_id, Other_player_id),
     get_void_neighbors_of_all_hex(Player_id, Void_neighbors),
-    findall(Hex_other_player, insect(_, _, Other_player_id, Hex_other_player, hexagon), Hexagons),
+    findall(Hex_other_player, insect(_, _, Other_player_id, Hex_other_player, yes), Hexagons),
     hexagon:anti_neighborhood(Void_neighbors, Hexagons, Placements).
 
 % get void neighbor of Player_id's Hex(Player_id, Hex, Void_neighbors)
 get_void_neighbors_of_hex(Player_id, Hex, Void_neighbors):-
     other_player(Player_id, Other_player_id),
     hexagon:axial_neighbors(Hex, Neighbors),
-    findall(H1, insect(_, _, Player_id, H1, hexagon), Hexagons1),
-    findall(H2, insect(_, _, Other_player_id, H2, hexagon), Hexagons2),
+    findall(H1, insect(_, _, Player_id, H1, yes), Hexagons1),
+    findall(H2, insect(_, _, Other_player_id, H2, yes), Hexagons2),
     findall(X, (member(X, Neighbors), not(member(X, Hexagons1)), not(member(X, Hexagons2))), Void_neighbors).
 
 % get void neighbor of all Player_id's Hex(Player_id, Void_neighbors)
 get_void_neighbors_of_all_hex(Player_id, Void_neighbors):-
-    findall(VN, (insect(_, _, Player_id, Hex, hexagon), get_void_neighbors_of_hex(Player_id, Hex, VN)), Void_neighbors_aux1),
+    findall(VN, (insect(_, _, Player_id, Hex, yes), get_void_neighbors_of_hex(Player_id, Hex, VN)), Void_neighbors_aux1),
     utils:flatten_hex(Void_neighbors_aux1, Void_neighbors_aux2),
     setof(X, member(X, Void_neighbors_aux2), Void_neighbors).
 
@@ -79,63 +79,54 @@ place_insect(Player_id, Type, Hex, Insect):-
     atom(Type),
     compound(Hex),
     var(Insect),
-    insect(Type, Id, Player_id, none, none),
+    insect(Type, Id, Player_id, none, no),
     !,
-    Over = hexagon,
-    retract(insect(Type, Id, Player_id, none, none)),
-    assert(insect(Type, Id, Player_id, Hex, Over)),
-    insect(Type, Id, Player_id, Hex, Over)=..Insect.
+    retract(insect(Type, Id, Player_id, none, no)),
+    assert(insect(Type, Id, Player_id, Hex, yes)),
+    insect(Type, Id, Player_id, Hex, yes)=..Insect.
 
 % all insect with filter
-all_insects(Type, Id, Player_id, Hex, Over, Insects):-
-    findall([Type, Id, Player_id, Hex, Over], insect(Type, Id, Player_id, Hex, Over), Insects).
+all_insects(Type, Id, Player_id, Hex, Placed, Insects):-
+    findall([Type, Id, Player_id, Hex, Placed], insect(Type, Id, Player_id, Hex, Placed), Insects).
 % initialize insects with default values
 init_insects():-
-    assert(insect(queen_bee, 1, p1, none, none)),
-    assert(insect(queen_bee, 1, p2, none, none)),
+    assert(insect(queen_bee, 1, p1, none, no)),
+    assert(insect(queen_bee, 1, p2, none, no)),
 
-    assert(insect(beetle, 1, p1, none, none)),
-    assert(insect(beetle, 2, p1, none, none)),
-    assert(insect(beetle, 1, p2, none, none)),
-    assert(insect(beetle, 2, p2, none, none)),
+    assert(insect(beetle, 1, p1, none, no)),
+    assert(insect(beetle, 2, p1, none, no)),
+    assert(insect(beetle, 1, p2, none, no)),
+    assert(insect(beetle, 2, p2, none, no)),
 
-    assert(insect(grasshopper, 1, p1, none, none)),
-    assert(insect(grasshopper, 2, p1, none, none)),
-    assert(insect(grasshopper, 3, p1, none, none)),
-    assert(insect(grasshopper, 1, p2, none, none)),
-    assert(insect(grasshopper, 2, p2, none, none)),
-    assert(insect(grasshopper, 3, p2, none, none)),
+    assert(insect(grasshopper, 1, p1, none, no)),
+    assert(insect(grasshopper, 2, p1, none, no)),
+    assert(insect(grasshopper, 3, p1, none, no)),
+    assert(insect(grasshopper, 1, p2, none, no)),
+    assert(insect(grasshopper, 2, p2, none, no)),
+    assert(insect(grasshopper, 3, p2, none, no)),
 
-    assert(insect(spider, 1, p1, none, none)),
-    assert(insect(spider, 2, p1, none, none)),
-    assert(insect(spider, 1, p2, none, none)),
-    assert(insect(spider, 2, p2, none, none)),
+    assert(insect(spider, 1, p1, none, no)),
+    assert(insect(spider, 2, p1, none, no)),
+    assert(insect(spider, 1, p2, none, no)),
+    assert(insect(spider, 2, p2, none, no)),
 
-    assert(insect(soldier_ant, 1, p1, none, none)),
-    assert(insect(soldier_ant, 2, p1, none, none)),
-    assert(insect(soldier_ant, 3, p1, none, none)),
-    assert(insect(soldier_ant, 1, p2, none, none)),
-    assert(insect(soldier_ant, 2, p2, none, none)),
-    assert(insect(soldier_ant, 3, p2, none, none)),
+    assert(insect(soldier_ant, 1, p1, none, no)),
+    assert(insect(soldier_ant, 2, p1, none, no)),
+    assert(insect(soldier_ant, 3, p1, none, no)),
+    assert(insect(soldier_ant, 1, p2, none, no)),
+    assert(insect(soldier_ant, 2, p2, none, no)),
+    assert(insect(soldier_ant, 3, p2, none, no)),
 
-    assert(insect(ladybug, 1, p1, none, none)),
-    assert(insect(ladybug, 1, p2, none, none)),
+    assert(insect(ladybug, 1, p1, none, no)),
+    assert(insect(ladybug, 1, p2, none, no)),
 
-    assert(insect(mosquito, 1, p1, none, none)),
-    assert(insect(mosquito, 1, p2, none, none)),
+    assert(insect(mosquito, 1, p1, none, no)),
+    assert(insect(mosquito, 1, p2, none, no)),
 
-    assert(insect(pillbug, 1, p1, none, none)),
-    assert(insect(pillbug, 1, p2, none, none)),
-
-    % delete me
-    assert(insect(a, 10, p1, none, none)),
-    assert(insect(a, 10, p2, none, none)).
+    assert(insect(pillbug, 1, p1, none, no)),
+    assert(insect(pillbug, 1, p2, none, no)).
 
 % reset insects's values
 reset_insects():-
     retractall(insect),
     init_insects().
-
-
-% --------------------------------------Initialization--------------------------------------
-% :- initialization(init_insects()).
