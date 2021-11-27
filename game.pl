@@ -9,7 +9,8 @@
     init_game/0,
     reset_game/0, 
     next_player/0,
-    increment_number_of_moves/1
+    increment_number_of_moves/1,
+    place_queen_bee/1
     ]).
 
 % --------------------------------------MODULES--------------------------------------
@@ -23,8 +24,8 @@
 % --------------------------------------METHODS--------------------------------------
 % init game
 init_game():-
-    assert(player(p1, 'Player 1', 0, no)),
-    assert(player(p2, 'Player 2', 0, no)),
+    assert(player(p1, 'Player 1', 0, false)),
+    assert(player(p2, 'Player 2', 0, false)),
     assert(current_player(p1)),
     insects:init_insects().
 
@@ -37,8 +38,9 @@ increment_number_of_moves(Player_id):-
 
 % reset game
 reset_game():-
-    retractall(player),
-    retractall(current_player),
+    retractall(player(_,_,_,_)),
+    retractall(current_player(_)),
+    retractall(insects:insect(_,_,_,_,_)),
     init_game().
 
 % next player
@@ -52,3 +54,9 @@ next_player():-
     P == p2,
     retract(current_player(p2)),
     assert(current_player(p1)).
+
+% place queen bee 
+place_queen_bee(Player_id):-
+    player(Player_id, Name, Number_of_moves, Queen_bee_placed),
+    retract(player(Player_id, Name, Number_of_moves, Queen_bee_placed)),
+    assert(player(Player_id, Name, Number_of_moves, true)).

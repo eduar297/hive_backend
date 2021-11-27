@@ -9,7 +9,6 @@
         place_insect/4,
         all_insects/6,
         init_insects/0,
-        reset_insects/0,
         possible_placements/3
     ]).
 
@@ -125,8 +124,3 @@ init_insects():-
 
     assert(insect(pillbug, 1, p1, none, no)),
     assert(insect(pillbug, 1, p2, none, no)).
-
-% reset insects's values
-reset_insects():-
-    retractall(insect),
-    init_insects().
