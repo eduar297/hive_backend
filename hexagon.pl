@@ -8,7 +8,8 @@
         cardinal_direction_to_axial/3,
         axial_neighbors/2,
         are_neighbors/2,
-        anti_neighborhood/3
+        anti_neighborhood/3,
+        get_QR/3
     ]).
 
 % --------------------------------------MODULES--------------------------------------
@@ -101,3 +102,6 @@ anti_neighborhood(L1, L2, L3):-
 be_a_neighbor(Hex, Hexs):-
     member(H, Hexs),
     are_neighbors(Hex, H),!.
+
+% get_QR(Hexagon)
+get_QR([Q,R], Q, R).

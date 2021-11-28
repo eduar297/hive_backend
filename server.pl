@@ -91,11 +91,10 @@ getPossiblePlacements(_, _{status_code:Status_Code, placements:Placements}) :-
 
 % Get possible moves
 getPossibleMoves(_{type:Type, hexagon:Hexagon}, _{status_code:Status_Code, moves:Moves}):-
+    string_to_atom(Type, Type_atom),
     game:current_player(Player_id),
-    game:player(Player_id, _, Number_of_moves, _),
-    % game:insects:possible_moves(Player_id, Type, Hexagon, Moves).
-    Status_Code = 200,
-    !.
+    game:player(Player_id, _, _, _),
+    game:insects:possible_moves(Player_id, Type_atom, Hexagon, Moves, Status_Code).
 
 % --------------------------------------Request Handlers--------------------------------------
 % Handle ping pong
@@ -128,10 +127,10 @@ handle_request_game_stats(_):-
     game:player(p1, Name_p1, Number_of_moves_p1, Queen_bee_placed_p1),
     game:player(p2, Name_p2, Number_of_moves_p2, Queen_bee_placed_p2),
 
-    game:insects:all_insects(_, _, p1, _, no, Non_placed_insects_p1),
-    game:insects:all_insects(_, _, p2, _, no, Non_placed_insects_p2),
+    game:insects:all_insects(_, _, p1, _, false, Non_placed_insects_p1),
+    game:insects:all_insects(_, _, p2, _, false, Non_placed_insects_p2),
 
-    game:insects:all_insects(_, _, _, _, yes, Placed_insects),
+    game:insects:all_insects(_, _, _, _, true, Placed_insects),
     
 
     Players_info =
