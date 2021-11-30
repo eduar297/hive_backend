@@ -17,6 +17,7 @@
 :- http_handler('/hive_api/insect/get_possible_placements', handle_request_get_possible_placements, []).
 :- http_handler('/hive_api/insect/get_possible_moves', handle_request_get_possible_moves, []).
 :- http_handler('/hive_api/insect/place_insect', handle_request_place_insect, []).
+:- http_handler('/hive_api/insect/move_insect', handle_request_move_insect, []).
 :- http_handler('/hive_api/game/game_stats', handle_request_game_stats, []).
 :- http_handler('/hive_api/game/reset_game', handle_request_reset_game, []).
 % --------------------------------------METHODS--------------------------------------
@@ -25,7 +26,7 @@ ping_pong(_{status_code:Status_Code, msg:Msg}) :-
     Status_Code = 200,
     Msg = "pong".
 
-% Place_insect
+% Place insect
 placeInsect(_{type:Type, hexagon:Hexagon}, _{status_code:Status_Code, msg:MSG}) :-
     string_to_atom(Type, Type_atom),
     (not(compound(Hexagon)); not(atom(Type_atom))),
@@ -64,6 +65,36 @@ placeInsect(_{type:Type, hexagon:Hexagon}, _{status_code:Status_Code, insect:Ins
     game:next_player(),
     Status_Code = 200.
 
+% move insect
+moveInsect(_{type:Type, hexagon_ori:Hexagon_Ori, hexagon_end:Hexagon_End}, _{status_code:Status_Code, msg:MSG}) :-
+    string_to_atom(Type, Type_atom),
+    (not(compound(Hexagon_Ori)); not(compound(Hexagon_End)); not(atom(Type_atom))),
+    Status_Code = 400,
+    MSG = "Wrong params!",
+    !.
+moveInsect(_{type:Type, hexagon_ori:Hexagon_Ori, hexagon_end:Hexagon_End}, _{status_code:Status_Code, msg:MSG}) :-
+    string_to_atom(Type, Type_atom),
+    game:current_player(Player_id),
+    game:player(Player_id, _, _, _),
+    game:insects:possible_moves(Player_id, Type_atom, Hexagon_Ori, Moves, Status_Code),
+    not(member(Hexagon_End, Moves)),
+    Status_Code = 400,
+    MSG = "Wrong placement",
+    !.
+moveInsect(_{type:Type, hexagon_ori:_, hexagon_end:_}, _{status_code:Status_Code, msg:MSG}) :-
+    string_to_atom(Type, Type_atom),
+    not(game:insects:insect(Type_atom, _, _, _, _)),
+    Status_Code = 400,
+    MSG = "Nonexistent insect",
+    !.
+moveInsect(_{type:Type, hexagon_ori:Hexagon_Ori, hexagon_end:Hexagon_End}, _{status_code:Status_Code, insect:Insect}) :-
+    string_to_atom(Type, Type_atom),
+    game:current_player(Player_id),
+    game:insects:move_insect(Player_id, Type_atom, Hexagon_Ori, Hexagon_End, Insect),
+    game:increment_number_of_moves(Player_id),
+    game:next_player(),
+    Status_Code = 200.
+
 % Get possible placements
 getPossiblePlacements(_{type:Type}, _{status_code:Status_Code, placements:Placements}):-
     string_to_atom(Type, Type_atom),
@@ -90,6 +121,13 @@ getPossiblePlacements(_, _{status_code:Status_Code, placements:Placements}) :-
     Status_Code = 200.
 
 % Get possible moves
+getPossibleMoves(_{type:Type, hexagon:Hexagon}, _{status_code:Status_Code, msg:MSG}):-
+    string_to_atom(Type, Type_atom),
+    game:current_player(Player_id),
+    game:player(Player_id, _, _, _),
+    game:insects:possible_moves(Player_id, Type_atom, Hexagon, MSG, Status_Code),
+    Status_Code == 400,
+    !.
 getPossibleMoves(_{type:Type, hexagon:Hexagon}, _{status_code:Status_Code, moves:Moves}):-
     string_to_atom(Type, Type_atom),
     game:current_player(Player_id),
@@ -106,6 +144,11 @@ handle_request_ping_pong(_) :-
 handle_request_place_insect(Req) :-
     http_read_json_dict(Req, Query),
     placeInsect(Query, Res),
+    reply_json_dict(Res).
+
+handle_request_move_insect(Req):-
+    http_read_json_dict(Req, Query),
+    moveInsect(Query, Res),
     reply_json_dict(Res).
 
 % Handle get possible placements
@@ -167,4 +210,4 @@ start_server(Port) :-
     http_server(http_dispatch, [port(Port)]).
 
 % --------------------------------------Initialization--------------------------------------
-:- initialization(start_server(3031), program).
+:- initialization(start_server(3030), program).

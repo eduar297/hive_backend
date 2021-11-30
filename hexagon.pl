@@ -9,7 +9,8 @@
         axial_neighbors/2,
         are_neighbors/2,
         anti_neighborhood/3,
-        get_QR/3
+        get_QR/3,
+        is_a_hinged_hex/2
     ]).
 
 % --------------------------------------MODULES--------------------------------------
@@ -104,4 +105,51 @@ be_a_neighbor(Hex, Hexs):-
     are_neighbors(Hex, H),!.
 
 % get_QR(Hexagon)
+% returns the q and r of a hexagon
 get_QR([Q,R], Q, R).
+
+% hive([[0,0],[1,0],[2,-1],[3,-1],[3,0],[-1,1],[-1,-1],[-2-1],[-3,-1], [-1,0]]).
+
+% two hexagons are adjacent if they are on the board and are neighbors
+adj(H1,H2, L):-
+    member(H1, L),
+    member(H2, L),
+    are_neighbors(H1,H2).
+
+% we all know what it does :D
+dfs_visit([[Goal|Path]|_],Goal,[Goal|Path],0,_):-!.
+dfs_visit([Path|Queue],Goal,FinalPath,N,Hive) :-
+    extend(Path,NewPaths, Hive),
+    append(NewPaths,Queue,NewQueue),
+    dfs_visit(NewQueue,Goal,FinalPath,M,Hive),
+    N is M+1.
+
+% extend the path without cycles
+extend([Node|Path],NewPaths, Hive) :-
+    findall([NewNode,Node|Path],
+            (adj(Node,NewNode,Hive), 
+            \+ member(NewNode,Path)), % for avoiding loops
+            NewPaths).
+
+% tells if there is a path in the graph that joins the two hexagons (if they are connected)
+is_connected(Hex1,Hex2,Hive):-
+    dfs_visit([[Hex1]],Hex2,_,_,Hive).
+
+% returns list with neighbors placed in the hive
+axial_neighbors_in_hive(Hex,Hive,L):-
+    axial_neighbors(Hex, Neighbors),
+    findall(X,(member(X,Neighbors),member(X,Hive)), L).
+
+% a hexagon is hinged if it is a hinge node in the graph formed by all hexagons...
+% I remove the candidate hexagon to point of articulation 
+% and analyze if all its neighbors are still connected
+is_a_hinged_hex(Hex,Hive):-
+    axial_neighbors_in_hive(Hex,Hive,L),
+    member(H1,L),
+    member(H2,L),
+    H1 \= H2,
+    H1 \= Hex,
+    H2 \= Hex,
+    utils:delete(Hex,Hive,Hive1),
+    not(is_connected(H1,H2,Hive1)),
+    !.

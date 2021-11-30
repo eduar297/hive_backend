@@ -10,7 +10,8 @@
         all_insects/6,
         init_insects/0,
         possible_placements/3,
-        possible_moves/5
+        possible_moves/5,
+        move_insect/5
     ]).
 
 % --------------------------------------MODULES--------------------------------------
@@ -59,8 +60,8 @@ possible_placements(Player_id, Number_of_moves, Placements):-
 % possible moves of any insect
 % possible_moves(Player_id, Type, Hexagon, Moves or MSG, Staus_Code)
 possible_moves(Player_id, _, _, MSG, Status_Code):-
-    not(insect(queen_bee, _, Player_id, Hexagon, true)),
-    MSG = "To move insects, you must have the queen bee in the hive",
+    not(insect(queen_bee, _, Player_id, _, true)),
+    MSG = "Add your QUEEN if you want to move!",
     Status_Code = 400,
     !.
 possible_moves(Player_id, Type, Hexagon, MSG, Status_Code):-
@@ -91,10 +92,37 @@ switch(X, [Val:Goal|Cases]) :-
         switch(X, Cases)
     ).
 
-
+% queen bee possible moves
+queen_bee_possible_moves(Player_id, Hexagon, MSG, Status_Code):-
+    insect(queen_bee, _, Player_id, Hexagon, true),
+    get_hive_hexagons(Hive_hex),
+    hexagon:is_a_hinged_hex(Hexagon, Hive_hex),
+    MSG = "Cannot move because this would break the hive in 2.",
+    Status_Code = 400,
+    !.
+queen_bee_possible_moves(Player_id, Hexagon, MSG, Status_Code):-
+    insect(queen_bee, _, Player_id, Hexagon, true),
+    get_void_neighbors_of_hex(Player_id, Hexagon, VN),
+    findall(X, 
+        (
+            member(X,VN),
+            has_at_least_one_neighbor_placed_other_than_hex(X, Hexagon),
+            road_blocked(X, Hexagon)
+        ),
+        L),
+        L == [],
+        MSG = 'Insect has no allowed destination.',
+        Status_Code = 400.
 queen_bee_possible_moves(Player_id, Hexagon, Moves, Status_Code):-
     insect(queen_bee, _, Player_id, Hexagon, true),
-    get_void_neighbors_of_hex(Player_id, Hexagon, Moves),
+    get_void_neighbors_of_hex(Player_id, Hexagon, VN),
+    findall(X, 
+        (
+            member(X,VN),
+            has_at_least_one_neighbor_placed_other_than_hex(X, Hexagon),
+            road_blocked(X, Hexagon)
+        ),
+        Moves),
     Status_Code = 200.
 
 beetle_possible_moves(Player_id, Hexagon, Moves, Status_Code):-
@@ -134,6 +162,54 @@ get_void_neighbors_of_hex(Player_id, Hex, Void_neighbors):-
     findall(H2, insect(_, _, Other_player_id, H2, true), Hexagons2),
     findall(X, (member(X, Neighbors), not(member(X, Hexagons1)), not(member(X, Hexagons2))), Void_neighbors).
 
+% get placed neighbor of Hex(Hex, Void_neighbors)
+get_placed_neighbors_of_hex(Hex, Placed_neighbors):-
+    hexagon:axial_neighbors(Hex, Neighbors),
+    findall(H, insect(_, _, _, H, true), Hexagons),
+    findall(X, (member(X, Neighbors), member(X, Hexagons)), Placed_neighbors).
+
+% H2 is blocked for H1 if they are adjacent and the two adjacent ones that they have in common are not empty
+road_blocked(H1, H2):-
+    hexagon:axial_neighbors(H1,N1),
+    hexagon:axial_neighbors(H2,N2),
+    intersection(N1, N2, Set),
+    findall(X, (member(X,Set), (insect(_,_,_,X, true))),L),
+    length(L,Len),
+    Len < 2.
+road_blocked(H1, H2):-
+    hexagon:axial_neighbors(H1,N1),
+    hexagon:axial_neighbors(H2,N2),
+    intersection(N1, N2, Set),
+    findall(X, (member(X,Set), (insect(_,_,_,X, true))),L),
+    length(L,Len),
+    Len == 2,
+    fail,!.
+
+    % write("Intersection: "),write(Set),nl,
+    % write("L: "),write(L),nl.
+
+% if X has at least one neighbor placed other than Hex
+has_at_least_one_neighbor_placed_other_than_hex(X, _):-
+    get_placed_neighbors_of_hex(X, Placed_Neighbors),
+    length(Placed_Neighbors, Len),
+    Len == 0,
+    fail,!.
+has_at_least_one_neighbor_placed_other_than_hex(X, Hex):-
+    get_placed_neighbors_of_hex(X, Placed_Neighbors),
+    length(Placed_Neighbors, Len),
+    Len == 1,
+    Placed_Neighbors == [Hex],
+    fail,!.
+has_at_least_one_neighbor_placed_other_than_hex(X, _):-
+    get_placed_neighbors_of_hex(X, Placed_Neighbors),
+    length(Placed_Neighbors, Len),
+    Len > 1.
+
+
+% returns all insects placed in the hive
+get_hive_hexagons(Hive_hex):-
+    findall(H, insect(_, _, _, H, true), Hive_hex).
+
 % get void neighbor of all Player_id's Hex(Player_id, Void_neighbors)
 get_void_neighbors_of_all_hex(Player_id, Void_neighbors):-
     findall(VN, (insect(_, _, Player_id, Hex, true), get_void_neighbors_of_hex(Player_id, Hex, VN)), Void_neighbors_aux1),
@@ -154,6 +230,22 @@ place_insect(Player_id, Type, Hex, Insect):-
     retract(insect(Type, Id, Player_id, none, false)),
     assert(insect(Type, Id, Player_id, Hex, true)),
     insect(Type, Id, Player_id, Hex, true)=..Insect.
+
+% move insect from hexagon_ori to hexagon_end
+% move_insect(Player_id, Type, Hex, Insect)
+move_insect(Player_id, Type, Hexagon_Ori, Hexagon_End, Insect):-
+    var(Insect),
+    atom(Player_id),
+    atom(Type),
+    compound(Hexagon_Ori),
+    compound(Hexagon_End),
+    var(Insect),
+    insect(Type, Id, Player_id, Hexagon_Ori, true),
+    !,
+    retract(insect(Type, Id, Player_id, Hexagon_Ori, true)),
+    assert(insect(Type, Id, Player_id, Hexagon_End, true)),
+    insect(Type, Id, Player_id, Hexagon_End, true)=..Insect.
+
 
 % all insect with filter
 all_insects(Type, Id, Player_id, Hex, Placed, Insects):-
@@ -195,3 +287,5 @@ init_insects():-
 
     assert(insect(pillbug, 1, p1, none, false)),
     assert(insect(pillbug, 1, p2, none, false)).
+
+% -------------------------------------------------------

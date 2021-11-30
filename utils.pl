@@ -10,7 +10,8 @@
     isList/1,
     isHex/1,
     element_hex/2,
-    flatten_hex/2
+    flatten_hex/2,
+    delete/3
     ]).
 
 % --------------------------------------MODULES--------------------------------------
@@ -61,3 +62,7 @@ flatten_hex([X|Y],R):-
     element_hex(X,V),
     flatten_hex(Y,L),
     concat(V,L,R).
+
+% Delete(X, L, R)
+delete(X,[X|R],R).
+delete(X,[Y|R],[Y|R1]):-delete(X,R,R1).
