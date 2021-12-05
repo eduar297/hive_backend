@@ -18,8 +18,11 @@
 :- http_handler('/hive_api/insect/get_possible_moves', handle_request_get_possible_moves, []).
 :- http_handler('/hive_api/insect/place_insect', handle_request_place_insect, []).
 :- http_handler('/hive_api/insect/move_insect', handle_request_move_insect, []).
+:- http_handler('/hive_api/insect/get_last', handle_request_get_last, []).
 :- http_handler('/hive_api/game/game_stats', handle_request_game_stats, []).
 :- http_handler('/hive_api/game/reset_game', handle_request_reset_game, []).
+
+% get_last_insect
 % --------------------------------------METHODS--------------------------------------
 % ping_pong | Tester server
 ping_pong(_{status_code:Status_Code, msg:Msg}) :-
@@ -43,7 +46,7 @@ placeInsect(_{type:_, hexagon:Hexagon}, _{status_code:Status_Code, msg:MSG}) :-
     !.
 placeInsect(_{type:Type, hexagon:_}, _{status_code:Status_Code, msg:MSG}) :-
     string_to_atom(Type, Type_atom),
-    not(game:insects:insect(Type_atom, _, _, _, _)),
+    not(game:insects:insect(Type_atom, _, _, _, _,_)),
     Status_Code = 400,
     MSG = "Nonexistent insect",
     !.
@@ -67,32 +70,35 @@ placeInsect(_{type:Type, hexagon:Hexagon}, _{status_code:Status_Code, insect:Ins
 
 % move insect
 moveInsect(_{type:Type, hexagon_ori:Hexagon_Ori, hexagon_end:Hexagon_End}, _{status_code:Status_Code, msg:MSG}) :-
-    string_to_atom(Type, Type_atom),
-    (not(compound(Hexagon_Ori)); not(compound(Hexagon_End)); not(atom(Type_atom))),
+    (not(compound(Hexagon_Ori)); not(compound(Hexagon_End)); not(atom(Type))),
     Status_Code = 400,
     MSG = "Wrong params!",
     !.
 moveInsect(_{type:Type, hexagon_ori:Hexagon_Ori, hexagon_end:Hexagon_End}, _{status_code:Status_Code, msg:MSG}) :-
-    string_to_atom(Type, Type_atom),
+    string_to_atom(Type, TypeA),
     game:current_player(Player_id),
     game:player(Player_id, _, _, _),
-    game:insects:possible_moves(Player_id, Type_atom, Hexagon_Ori, Moves, Status_Code),
+    game:insects:possible_moves(Player_id, TypeA, Hexagon_Ori, Moves, _),
     not(member(Hexagon_End, Moves)),
     Status_Code = 400,
     MSG = "Wrong placement",
     !.
-moveInsect(_{type:Type, hexagon_ori:_, hexagon_end:_}, _{status_code:Status_Code, msg:MSG}) :-
-    string_to_atom(Type, Type_atom),
-    not(game:insects:insect(Type_atom, _, _, _, _)),
-    Status_Code = 400,
-    MSG = "Nonexistent insect",
-    !.
-moveInsect(_{type:Type, hexagon_ori:Hexagon_Ori, hexagon_end:Hexagon_End}, _{status_code:Status_Code, insect:Insect}) :-
-    string_to_atom(Type, Type_atom),
+moveInsect(_{type:Type, id:Id, lvl:Lvl, hexagon_ori:Hexagon_Ori, hexagon_end:Hexagon_End}, _{status_code:Status_Code, insectRes:InsectRes}):-
+    string_to_atom(Type, TypeA),
     game:current_player(Player_id),
-    game:insects:move_insect(Player_id, Type_atom, Hexagon_Ori, Hexagon_End, Insect),
+    game:insects:move_insect(TypeA, Id, Player_id, Lvl, Hexagon_Ori, Hexagon_End, InsectRes),
     game:increment_number_of_moves(Player_id),
     game:next_player(),
+    Status_Code = 200.
+
+% get the last insect in hexagon
+getLast(_{hexagon:Hexagon}, _{status_code:Status_Code ,msg:MSG}):-
+    insects:get_last_insect(Hexagon, Insect),
+    Insect == [],
+    MSG = "Empty hexagon!",
+    Status_Code = 400,!.
+getLast(_{hexagon:Hexagon}, _{status_code:Status_Code ,insect:Insect}):-
+    insects:get_last_insect(Hexagon, Insect),
     Status_Code = 200.
 
 % Get possible placements
@@ -121,18 +127,18 @@ getPossiblePlacements(_, _{status_code:Status_Code, placements:Placements}) :-
     Status_Code = 200.
 
 % Get possible moves
-getPossibleMoves(_{type:Type, hexagon:Hexagon}, _{status_code:Status_Code, msg:MSG}):-
+getPossibleMoves(_{type:Type, id:Id,  hexagon:Hexagon}, _{status_code:Status_Code, msg:MSG}):-
     string_to_atom(Type, Type_atom),
     game:current_player(Player_id),
     game:player(Player_id, _, _, _),
-    game:insects:possible_moves(Player_id, Type_atom, Hexagon, MSG, Status_Code),
+    game:insects:possible_moves(Player_id, Type_atom, Id, Hexagon, MSG, Status_Code),
     Status_Code == 400,
     !.
-getPossibleMoves(_{type:Type, hexagon:Hexagon}, _{status_code:Status_Code, moves:Moves}):-
+getPossibleMoves(_{type:Type, id:Id, hexagon:Hexagon}, _{status_code:Status_Code, moves:Moves}):-
     string_to_atom(Type, Type_atom),
     game:current_player(Player_id),
     game:player(Player_id, _, _, _),
-    game:insects:possible_moves(Player_id, Type_atom, Hexagon, Moves, Status_Code).
+    game:insects:possible_moves(Player_id, Type_atom, Id, Hexagon, Moves, Status_Code).
 
 % --------------------------------------Request Handlers--------------------------------------
 % Handle ping pong
@@ -164,16 +170,22 @@ handle_request_get_possible_moves(Req):-
     getPossibleMoves(Query, Res),
     reply_json_dict(Res).
 
+% handle get last insect in hexagon
+handle_request_get_last(Req):-
+    http_read_json_dict(Req, Query),
+    getLast(Query, Res),
+    reply_json_dict(Res).
+
 % Handle game stats
 handle_request_game_stats(_):-
     game:current_player(Current_player_id),
     game:player(p1, Name_p1, Number_of_moves_p1, Queen_bee_placed_p1),
     game:player(p2, Name_p2, Number_of_moves_p2, Queen_bee_placed_p2),
 
-    game:insects:all_insects(_, _, p1, _, false, Non_placed_insects_p1),
-    game:insects:all_insects(_, _, p2, _, false, Non_placed_insects_p2),
+    game:insects:all_insects(_, _, p1, _, false,_, Non_placed_insects_p1),
+    game:insects:all_insects(_, _, p2, _, false,_, Non_placed_insects_p2),
 
-    game:insects:all_insects(_, _, _, _, true, Placed_insects),
+    game:insects:all_insects(_, _, _, _, true,_,Placed_insects),
     
 
     Players_info =

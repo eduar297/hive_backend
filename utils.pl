@@ -11,7 +11,8 @@
     isHex/1,
     element_hex/2,
     flatten_hex/2,
-    delete/3
+    delete/3,
+    last_element/2
     ]).
 
 % --------------------------------------MODULES--------------------------------------
@@ -66,3 +67,19 @@ flatten_hex([X|Y],R):-
 % Delete(X, L, R)
 delete(X,[X|R],R).
 delete(X,[Y|R],[Y|R1]):-delete(X,R,R1).
+
+% L3 is the difference of L2 and l1.
+delete2(L1, L2, L3):-
+    findall(X, (member(X,L2), not(member(X,L1))), L3).
+
+% delete_all_occurrences(X,L,R)
+delete_all_occurrences(_,[],[]).
+delete_all_occurrences(X,[X|T],R):-
+    delete_all_occurrences(X,T,R),!.
+delete_all_occurrences(X,[Y|R],[Y|R1]):-
+    delete_all_occurrences(X,R,R1).
+
+% last element
+last_element(X,[X|[]]):-!.
+last_element(X,[_|T]):-
+    last_element(X,T).

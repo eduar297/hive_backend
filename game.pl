@@ -40,7 +40,7 @@ increment_number_of_moves(Player_id):-
 reset_game():-
     retractall(player(_,_,_,_)),
     retractall(current_player(_)),
-    retractall(insects:insect(_,_,_,_,_)),
+    retractall(insects:insect(_,_,_,_,_,_)),
     init_game().
 
 % next player
