@@ -31,3 +31,24 @@ bfs([[U, Lvl]|Q], Visited):-
     append([U], Visited, Visited1),
     append(Q, A, Q1),
     bfs(Q1, Visited1).
+
+:-dynamic a/2, box/1.
+a(0,0).
+a(0,1).
+a(1,0).
+a(1,1).
+
+get_from_box():-
+    not(box(_)),!.
+get_from_box():-
+    box(L),
+    retract(box(L)),
+    T=..L,
+    assert(T),!.
+
+move_to_box(L):-
+    T=..L,
+    retract(T),
+    L1 = [box, L],
+    T1=..L1,
+    assert(T1),!.

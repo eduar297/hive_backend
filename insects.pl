@@ -18,7 +18,8 @@
 :-consult(hexagon), import(hexagon).
 
 % --------------------------------------DYNAMICS--------------------------------------
-:-dynamic insect/6.
+:-dynamic insect/6, box/1.
+% box/1. %is to save one predicate temporarily
 % insect(Type, Id, PlayerId, Hex=[Q,R], Placed, Lvl)
 
 % other player id
@@ -78,6 +79,7 @@ possible_moves(Player_id, Type, Id, Hexagon, MSG, Status_Code):-
     Status_Code = 400,
     !.
 possible_moves(Player_id, Type, _, Hexagon, Moves, Status_Code):-
+    
     switch(Type,
         [
             queen_bee: queen_bee_possible_moves(Player_id, Hexagon, Moves, Status_Code),
@@ -240,33 +242,66 @@ grasshopper_possible_moves(Player_id, Hexagon, Moves, Status_Code):-
 % spider possible moves
 spider_possible_moves(Player_id, Hexagon, Moves, Status_Code):-
     insect(spider, _, Player_id, Hexagon, true, _),
-    bfs_lvl([[Hexagon, 0]], [], 3),!,
+
+    bfs_lvl([[Hexagon, 0]], [], 3, valid_adj1),!,
     findall(U, (node(U, Lvl), Lvl > -1), Moves0),
     retractall(node(_, _)),
     get_void_neighbors_of_hex_2(Hexagon, VN),
     findall(X, (member(X, VN), not(can_move(Hexagon, X))), L),
-    utils:delete2(L, Moves0, Moves),
+    utils:delete2(L, Moves0, Moves1),
 
-    filter_spider_moves(Hexagon, Moves, Moves1),
-
-    Status_Code = 200.
-
-
-filter_spider_moves(Hex, L1, L2):-
-    findall(Path, (member(X, L1), hexagon:dfs_visit([[Hex]], X, Path, _, L1), length(Path, Len), Len == 4), Paths).
-    % tell('log'),
-    % write(L2),
-    % told.
-
-% valid_path(Path):-
+    filter_spider_moves(Hexagon, Moves1, Moves),
     
 
+    Status_Code = 200.
+% -----------
+filter_spider_moves(Hex, L1, L2):-
+    tell('log'),
+    findall(Path, (
+        member(X, L1), 
+        hexagon:dfs_visit([[Hex]], X, Path, _, L1), 
+        length(Path, Len), 
+        Len == 4, 
+        is_valid_path_spider(Path)
+        ), Paths),
+    get_from_box(),
+    findall(H, member([H|T], Paths), L2),
+    told.
+
+% Path = p1,p2,p3,p4 is valid if can move from p_{i} to p_{i+1}
+is_valid_path_spider(Path):-
+    reverse(Path, RPath),
+    utils:element_at(X1, RPath, 1),!,
+    utils:element_at(X2, RPath, 2),!,
+    utils:element_at(X3, RPath, 3),!,
+    utils:element_at(X4, RPath, 4),!,
+    can_move(X1, X2),
+    can_move2(X1, X2, X3),
+    can_move2(X1, X3, X4).
+
+
+% get the Term save on the box
+get_from_box():-
+    not(box(_)),!.
+get_from_box():-
+    box(L),
+    retract(box(L)),
+    T=..L,
+    assert(T),!.
+
+% remove predicate P whose list is [name, arg...] and save on the box
+move_to_box(L):-
+    T=..L,
+    retract(T),
+    L1 = [box, L],
+    T1=..L1,
+    assert(T1),!.
 
 % soldier ant possible moves
 soldier_ant_possible_moves(Player_id, Hexagon, Moves, Status_Code):-
     insect(soldier_ant, _, Player_id, Hexagon, true, _),
     current_prolog_flag(max_tagged_integer, MaxI),
-    bfs_lvl([[Hexagon, 0]], [], MaxI),!,
+    bfs_lvl([[Hexagon, 0]], [], MaxI, valid_adj1),!,
     findall(U, (node(U, Lvl), Lvl > 0), Moves0),
     retractall(node(_, _)),
     get_void_neighbors_of_hex_2(Hexagon, VN),
@@ -276,31 +311,46 @@ soldier_ant_possible_moves(Player_id, Hexagon, Moves, Status_Code):-
 
 :-dynamic node/2.
 
-% bfs (Queue, Visited, Lvl) | Expand the search as long as it does not exceed the Lvl
-bfs_lvl([], _, _):-!.
-bfs_lvl([[U, _lvl]|Q], Visited, Lvl):-
+% bfs (Queue, Visited, Lvl, AdjPred) | Expand the search as long as it does not exceed the Lvl. Uses AdjPred to find adj hexagons
+bfs_lvl([], _, _, _):-!.
+bfs_lvl([[U, _lvl]|Q], Visited, Lvl, AdjPred):-
     _lvl > Lvl,!.
-bfs_lvl([[U, _lvl]|Q], Visited, Lvl):-
+bfs_lvl([[U, _lvl]|Q], Visited, Lvl, AdjPred):-
     member(U, Visited),
-    bfs_lvl(Q, Visited, Lvl).
-bfs_lvl([[U, _lvl]|Q], Visited, Lvl):-
+    bfs_lvl(Q, Visited, Lvl, AdjPred).
+bfs_lvl([[U, _lvl]|Q], Visited, Lvl, AdjPred):-
     not(member(U, Visited)),
     assert(node(U, _lvl)),
-    valid_adj([U, _lvl], A),
+    Pred =..[AdjPred, [U, _lvl], A],
+    call(Pred),
+    % valid_adj([U, _lvl], A),
     append([U], Visited, Visited1),
     append(Q, A, Q1),
-    bfs_lvl(Q1, Visited1, Lvl).
+    bfs_lvl(Q1, Visited1, Lvl, AdjPred).
 
 % get all valid adj
-valid_adj([U, Lvl], A):-
+valid_adj1([U, Lvl], A):-
     Lvl1 is Lvl + 1,
     get_void_neighbors_of_hex_2(U, N),
 
     findall([V, Lvl1], 
         (
             member(V,N),
-            has_at_least_one_neighbor_placed(V),
-            can_move(U, V)
+            % can_move(U, V),
+            not(road_blocked(U, V)),
+            has_at_least_one_neighbor_placed(V)
+        ), A).
+
+valid_adj2([U, Lvl], A):-
+    Lvl1 is Lvl + 1,
+    get_void_neighbors_of_hex_2(U, N),
+
+    findall([V, Lvl1], 
+        (
+            member(V,N)
+            % can_move(U, V),
+            % not(road_blocked(U, V)),
+            % has_at_least_one_neighbor_placed(V)
         ), A).
 
 
@@ -338,12 +388,19 @@ get_placed_neighbors_of_hex(Hex, Placed_neighbors):-
     findall(H, insect(_, _, _, H, true, 0), Hexagons),
     findall(X, (member(X, Neighbors), member(X, Hexagons)), Placed_neighbors).
 
-% amount of common neihbors | 0 or 1 or 2
+% amount of common neihbors | Len = 0 or 1 or 2
 amount_common_neighbors(H1, H2, Len):-
     hexagon:axial_neighbors(H1,N1),
     hexagon:axial_neighbors(H2,N2),
     intersection(N1, N2, Set),
     findall(X, (member(X,Set), not(is_an_empty_hex(X))),L),
+    length(L,Len).
+% amount of common neihbors between H1, H2 except Hexagon | Len = 0 or 1
+amount_common_neighbors2(Hexagon, H1, H2, Len):-
+    hexagon:axial_neighbors(H1,N1),
+    hexagon:axial_neighbors(H2,N2),
+    intersection(N1, N2, Set),
+    findall(X, (member(X, Set), not(member(Hexagon, Set)), not(is_an_empty_hex(X))),L),
     length(L,Len).
 
 % H2 is blocked to H1 if their two neighbors in common are placed
@@ -355,12 +412,16 @@ road_blocked(H1, H2):-
 can_move(H1, H2):-
     amount_common_neighbors(H1, H2, Len),
     Len == 1.
-% -------------------------------------------------------------
+% same as can_move but using amount_common_neighbors2
+can_move2(Hexagon, H1, H2):-
+    amount_common_neighbors2(Hexagon, H1, H2, Len),
+    Len == 1.
+
+% if U has at least one neighbor placed in the Hive
 has_at_least_one_neighbor_placed(U):-
     get_placed_neighbors_of_hex(U, PN),
     length(PN, Len),
     Len > 0.
-
 
 % returns all insects placed in the hive
 get_hive_hexagons(Hive_hex):-
@@ -399,9 +460,6 @@ move_insect(Type, Id, Player_id, Lvl, Hexagon_Ori, Hexagon_End, InsectRes):-
     get_max_lvl_in_hex(Hexagon_End, Lvl_end),
 
     Lvl1 is Lvl_end + 1,
-    tell('./log'),
-    write(Lvl_end),
-    told,
 
     assert(insect(Type, Id, Player_id, Hexagon_End, true, Lvl1)),
     InsectRes = [Type, Id, Player_id, Hexagon_End, true, Lvl1],!.
@@ -448,7 +506,6 @@ init_insects():-
     assert(insect(pillbug, 1, p1, none, false, -1)),
     assert(insect(pillbug, 1, p2, none, false)).
 
-% -------------------------------------------------------
 % if Hex is empty
 is_an_empty_hex(Hex):-
     not(insect(_, _, _, Hex, true,_)),!.
