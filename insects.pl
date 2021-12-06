@@ -65,11 +65,8 @@ possible_moves(Player_id, _, _, MSG, Status_Code):-
     Status_Code = 400,
     !.
 possible_moves(Player_id, Type, Id, Hexagon, MSG, Status_Code):-
-    insect(Type, Id, Player_id, Hexagon, true, Lvl),
+    insect(Type, Id, Player_id, Hexagon, true, _),
     is_blocked(Type,Id,Player_id,Hexagon),
-    % tell('./log'),
-    % write([Type,Id,Player_id,Hexagon,Lvl]),
-    % told,
     MSG = "Insect blocked!",
     Status_Code = 400,
     !.
@@ -80,7 +77,7 @@ possible_moves(Player_id, Type, Id, Hexagon, MSG, Status_Code):-
     MSG = "Cannot move because this would break the hive in 2.",
     Status_Code = 400,
     !.
-possible_moves(Player_id, Type, Id, Hexagon, Moves, Status_Code):-
+possible_moves(Player_id, Type, _, Hexagon, Moves, Status_Code):-
     switch(Type,
         [
             queen_bee: queen_bee_possible_moves(Player_id, Hexagon, Moves, Status_Code),
@@ -130,9 +127,8 @@ queen_bee_possible_moves(Player_id, Hexagon, MSG, Status_Code):-
     get_void_neighbors_of_hex_2( Hexagon, VN),
     findall(X, 
         (
-            member(X,VN),
-            has_at_least_one_neighbor_placed_other_than_hex(X, Hexagon),
-            road_blocked(X, Hexagon)
+            member(X, VN),
+            can_move(Hexagon, X)
         ),L),
         L == [],
         MSG = 'Queen bee has no allowed destination.',
@@ -142,9 +138,8 @@ queen_bee_possible_moves(Player_id, Hexagon, Moves, Status_Code):-
     get_void_neighbors_of_hex_2(Hexagon, VN),
     findall(X, 
         (
-            member(X,VN),
-            has_at_least_one_neighbor_placed_other_than_hex(X, Hexagon),
-            road_blocked(X, Hexagon)
+            member(X, VN),
+            can_move(Hexagon, X)
         ),Moves),
     Status_Code = 200.
 
@@ -158,8 +153,7 @@ beetle_possible_moves(Player_id, Hexagon, MSG, Status_Code):-
     findall(X, 
         (
             member(X,VN),
-            has_at_least_one_neighbor_placed_other_than_hex(X, Hexagon),
-            road_blocked(X, Hexagon)
+            can_move(X, Hexagon)
         ),L1),
     get_placed_neighbors_of_hex(Hexagon, L2),
     append(L1, L2, Moves),
@@ -186,8 +180,7 @@ beetle_possible_moves(Player_id, Hexagon, Moves, Status_Code):-
     findall(X, 
         (
             member(X,VN),
-            has_at_least_one_neighbor_placed_other_than_hex(X, Hexagon),
-            road_blocked(X, Hexagon)
+            can_move(Hexagon, X)
         ),L1),
     get_placed_neighbors_of_hex(Hexagon, L2),
     append(L1, L2, Moves),
@@ -247,42 +240,58 @@ grasshopper_possible_moves(Player_id, Hexagon, Moves, Status_Code):-
 % spider possible moves
 spider_possible_moves(Player_id, Hexagon, Moves, Status_Code):-
     insect(spider, _, Player_id, Hexagon, true, _),
-    bfs_ant([[Hexagon, 0]], []),!,
-    findall(U, (node(U, Lvl), Lvl == 3), Moves0),
+    bfs_lvl([[Hexagon, 0]], [], 3),!,
+    findall(U, (node(U, Lvl), Lvl > -1), Moves0),
     retractall(node(_, _)),
     get_void_neighbors_of_hex_2(Hexagon, VN),
-    findall(X, (member(X, VN), not(has_at_least_one_neighbor_placed_other_than_hex(X, Hexagon))), L),
-    utils:delete2([Hexagon|L], Moves0, Moves),
+    findall(X, (member(X, VN), not(can_move(Hexagon, X))), L),
+    utils:delete2(L, Moves0, Moves),
+
+    filter_spider_moves(Hexagon, Moves, Moves1),
+
     Status_Code = 200.
+
+
+filter_spider_moves(Hex, L1, L2):-
+    findall(Path, (member(X, L1), hexagon:dfs_visit([[Hex]], X, Path, _, L1), length(Path, Len), Len == 4), Paths).
+    % tell('log'),
+    % write(L2),
+    % told.
+
+% valid_path(Path):-
+    
+
 
 % soldier ant possible moves
 soldier_ant_possible_moves(Player_id, Hexagon, Moves, Status_Code):-
     insect(soldier_ant, _, Player_id, Hexagon, true, _),
-    bfs_ant([[Hexagon, 0]], []),!,
-    findall(U, node(U, _), Moves0),
+    current_prolog_flag(max_tagged_integer, MaxI),
+    bfs_lvl([[Hexagon, 0]], [], MaxI),!,
+    findall(U, (node(U, Lvl), Lvl > 0), Moves0),
     retractall(node(_, _)),
     get_void_neighbors_of_hex_2(Hexagon, VN),
-    findall(X, (member(X, VN), not(has_at_least_one_neighbor_placed_other_than_hex(X, Hexagon))), L),
-    utils:delete2([Hexagon|L], Moves0, Moves),
+    findall(X, (member(X, VN), not(can_move(Hexagon, X))), L),
+    utils:delete2(L, Moves0, Moves),
     Status_Code = 200.
 
 :-dynamic node/2.
 
-% bfs (Queue, Lvl)
-bfs_ant([], _):-!.
-bfs_ant([[U, _]|Q], Visited):-
+% bfs (Queue, Visited, Lvl) | Expand the search as long as it does not exceed the Lvl
+bfs_lvl([], _, _):-!.
+bfs_lvl([[U, _lvl]|Q], Visited, Lvl):-
+    _lvl > Lvl,!.
+bfs_lvl([[U, _lvl]|Q], Visited, Lvl):-
     member(U, Visited),
-    bfs_ant(Q, Visited).
-
-bfs_ant([[U, Lvl]|Q], Visited):-
+    bfs_lvl(Q, Visited, Lvl).
+bfs_lvl([[U, _lvl]|Q], Visited, Lvl):-
     not(member(U, Visited)),
-    assert(node(U, Lvl)),
-    valid_adj([U, Lvl], A),
+    assert(node(U, _lvl)),
+    valid_adj([U, _lvl], A),
     append([U], Visited, Visited1),
     append(Q, A, Q1),
-    bfs_ant(Q1, Visited1).
+    bfs_lvl(Q1, Visited1, Lvl).
 
-% get all valid adj of the ant
+% get all valid adj
 valid_adj([U, Lvl], A):-
     Lvl1 is Lvl + 1,
     get_void_neighbors_of_hex_2(U, N),
@@ -291,7 +300,7 @@ valid_adj([U, Lvl], A):-
         (
             member(V,N),
             has_at_least_one_neighbor_placed(V),
-            road_blocked(U, V)
+            can_move(U, V)
         ), A).
 
 
@@ -326,42 +335,26 @@ get_void_neighbors_of_hex_2(Hex, Void_neighbors):-
 % get placed neighbor of Hex(Hex, Void_neighbors)queen bee
 get_placed_neighbors_of_hex(Hex, Placed_neighbors):-
     hexagon:axial_neighbors(Hex, Neighbors),
-    findall(H, insect(_, _, _, H, true, _), Hexagons),
+    findall(H, insect(_, _, _, H, true, 0), Hexagons),
     findall(X, (member(X, Neighbors), member(X, Hexagons)), Placed_neighbors).
 
-% H2 is blocked for H1 if they are adjacent and the two adjacent ones that they have in common are not empty
-road_blocked(H1, H2):-
+% amount of common neihbors | 0 or 1 or 2
+amount_common_neighbors(H1, H2, Len):-
     hexagon:axial_neighbors(H1,N1),
     hexagon:axial_neighbors(H2,N2),
     intersection(N1, N2, Set),
-    setof(X, (member(X,Set), (insect(_,_,_,X, true,_))),L),
-    length(L,Len),
-    Len < 2.
-road_blocked(H1, H2):-
-    hexagon:axial_neighbors(H1,N1),
-    hexagon:axial_neighbors(H2,N2),
-    intersection(N1, N2, Set),
-    setof(X, (member(X,Set), (insect(_,_,_,X, true,_))),L),
-    length(L,Len),
-    Len == 2,
-    fail,!.
+    findall(X, (member(X,Set), not(is_an_empty_hex(X))),L),
+    length(L,Len).
 
-% if X has at least one neighbor placed other than Hex
-has_at_least_one_neighbor_placed_other_than_hex(X, _):-
-    get_placed_neighbors_of_hex(X, Placed_Neighbors),
-    length(Placed_Neighbors, Len),
-    Len == 0,
-    fail,!.
-has_at_least_one_neighbor_placed_other_than_hex(X, Hex):-
-    get_placed_neighbors_of_hex(X, Placed_Neighbors),
-    length(Placed_Neighbors, Len),
-    Len == 1,
-    Placed_Neighbors == [Hex],
-    fail,!.
-has_at_least_one_neighbor_placed_other_than_hex(X, _):-
-    get_placed_neighbors_of_hex(X, Placed_Neighbors),
-    length(Placed_Neighbors, Len),
-    Len > 1.
+% H2 is blocked to H1 if their two neighbors in common are placed
+road_blocked(H1, H2):-
+    amount_common_neighbors(H1, H2, Len),
+    Len == 2.
+
+% H1 can move to H2 if the have exactly one neighbor in common
+can_move(H1, H2):-
+    amount_common_neighbors(H1, H2, Len),
+    Len == 1.
 % -------------------------------------------------------------
 has_at_least_one_neighbor_placed(U):-
     get_placed_neighbors_of_hex(U, PN),
