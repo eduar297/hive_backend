@@ -18,9 +18,10 @@
 :-consult(hexagon), import(hexagon).
 
 % --------------------------------------DYNAMICS--------------------------------------
-:-dynamic insect/6, box/1.
-% box/1. %is to save one predicate temporarily
+:-dynamic insect/6, box/1, node/2.
+% box(L). %is to save one predicate temporarily
 % insect(Type, Id, PlayerId, Hex=[Q,R], Placed, Lvl)
+% node(Hex, Lvl in Bfs) is used by bfs_lvl
 
 % other player id
 other_player(p1, p2).
@@ -60,8 +61,8 @@ possible_placements(Player_id, Number_of_moves, Placements):-
 
 % possible moves of any insect
 % possible_moves(Player_id, Type, Hexagon, Moves or MSG, Staus_Code)
-possible_moves(Player_id, _, _, MSG, Status_Code):-
-    not(insect(queen_bee, _, Player_id, _, true,_)),
+possible_moves(Player_id, _, _, _, MSG, Status_Code):-
+    not(insect(queen_bee, _, Player_id, _, true, 0)),
     MSG = "Add your QUEEN if you want to move!",
     Status_Code = 400,
     !.
@@ -240,21 +241,17 @@ grasshopper_possible_moves(Player_id, Hexagon, Moves, Status_Code):-
     Status_Code = 200.
 
 % spider possible moves
-spider_possible_moves(Player_id, Hexagon, Moves, Status_Code):-
-    insect(spider, _, Player_id, Hexagon, true, _),
-
+spider_possible_moves(_, Hexagon, Moves, Status_Code):-
     bfs_lvl([[Hexagon, 0]], [], 3, valid_adj1),!,
     findall(U, (node(U, Lvl), Lvl > -1), Moves0),
     retractall(node(_, _)),
     get_void_neighbors_of_hex_2(Hexagon, VN),
     findall(X, (member(X, VN), not(can_move(Hexagon, X))), L),
     utils:delete2(L, Moves0, Moves1),
-
     filter_spider_moves(Hexagon, Moves1, Moves),
-    
-
     Status_Code = 200.
-% -----------
+
+% Put in L2 spider possible moves 
 filter_spider_moves(Hex, L1, L2):-
     tell('log'),
     findall(Path, (
@@ -265,7 +262,7 @@ filter_spider_moves(Hex, L1, L2):-
         is_valid_path_spider(Path)
         ), Paths),
     get_from_box(),
-    findall(H, member([H|T], Paths), L2),
+    findall(H, member([H|_], Paths), L2),
     told.
 
 % Path = p1,p2,p3,p4 is valid if can move from p_{i} to p_{i+1}
@@ -309,13 +306,11 @@ soldier_ant_possible_moves(Player_id, Hexagon, Moves, Status_Code):-
     utils:delete2(L, Moves0, Moves),
     Status_Code = 200.
 
-:-dynamic node/2.
-
 % bfs (Queue, Visited, Lvl, AdjPred) | Expand the search as long as it does not exceed the Lvl. Uses AdjPred to find adj hexagons
 bfs_lvl([], _, _, _):-!.
-bfs_lvl([[U, _lvl]|Q], Visited, Lvl, AdjPred):-
+bfs_lvl([[_, _lvl]|_], _, Lvl, _):-
     _lvl > Lvl,!.
-bfs_lvl([[U, _lvl]|Q], Visited, Lvl, AdjPred):-
+bfs_lvl([[U, _]|Q], Visited, Lvl, AdjPred):-
     member(U, Visited),
     bfs_lvl(Q, Visited, Lvl, AdjPred).
 bfs_lvl([[U, _lvl]|Q], Visited, Lvl, AdjPred):-
@@ -504,7 +499,7 @@ init_insects():-
     assert(insect(mosquito, 1, p2, none, false, -1)),
 
     assert(insect(pillbug, 1, p1, none, false, -1)),
-    assert(insect(pillbug, 1, p2, none, false)).
+    assert(insect(pillbug, 1, p2, none, false, -1)).
 
 % if Hex is empty
 is_an_empty_hex(Hex):-

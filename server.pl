@@ -21,6 +21,7 @@
 :- http_handler('/hive_api/insect/get_last', handle_request_get_last, []).
 :- http_handler('/hive_api/game/game_stats', handle_request_game_stats, []).
 :- http_handler('/hive_api/game/reset_game', handle_request_reset_game, []).
+:- http_handler('/hive_api/game/new_game', handle_request_new_game, []).
 
 % get_last_insect
 % --------------------------------------METHODS--------------------------------------
@@ -38,7 +39,7 @@ placeInsect(_{type:Type, hexagon:Hexagon}, _{status_code:Status_Code, msg:MSG}) 
     !.
 placeInsect(_{type:_, hexagon:Hexagon}, _{status_code:Status_Code, msg:MSG}) :-
     game:current_player(Player_id),
-    game:player(Player_id, _, Number_of_moves, _),
+    game:player(Player_id, _, Number_of_moves, _, _),
     game:insects:possible_placements(Player_id, Number_of_moves, Placements),
     not(member(Hexagon, Placements)),
     Status_Code = 400,
@@ -77,7 +78,7 @@ moveInsect(_{type:Type, hexagon_ori:Hexagon_Ori, hexagon_end:Hexagon_End}, _{sta
 moveInsect(_{type:Type, hexagon_ori:Hexagon_Ori, hexagon_end:Hexagon_End}, _{status_code:Status_Code, msg:MSG}) :-
     string_to_atom(Type, TypeA),
     game:current_player(Player_id),
-    game:player(Player_id, _, _, _),
+    game:player(Player_id, _, _, _, _),
     game:insects:possible_moves(Player_id, TypeA, Hexagon_Ori, Moves, _),
     not(member(Hexagon_End, Moves)),
     Status_Code = 400,
@@ -105,7 +106,7 @@ getLast(_{hexagon:Hexagon}, _{status_code:Status_Code ,insect:Insect}):-
 getPossiblePlacements(_{type:Type}, _{status_code:Status_Code, placements:Placements}):-
     string_to_atom(Type, Type_atom),
     game:current_player(Player_id),
-    game:player(Player_id, _, Number_of_moves, Queen_bee_placed),
+    game:player(Player_id, _, Number_of_moves, Queen_bee_placed, _),
     Queen_bee_placed == false,
     Number_of_moves == 3,
     Type_atom == queen_bee,
@@ -114,7 +115,7 @@ getPossiblePlacements(_{type:Type}, _{status_code:Status_Code, placements:Placem
     !.
 getPossiblePlacements(_, _{status_code:Status_Code, msg:MSG}):-
     game:current_player(Player_id),
-    game:player(Player_id, _, Number_of_moves, Queen_bee_placed),
+    game:player(Player_id, _, Number_of_moves, Queen_bee_placed, _),
     Queen_bee_placed == false,
     Number_of_moves == 3,
     Status_Code = 400,
@@ -122,7 +123,7 @@ getPossiblePlacements(_, _{status_code:Status_Code, msg:MSG}):-
     !.
 getPossiblePlacements(_, _{status_code:Status_Code, placements:Placements}) :-
     game:current_player(Player_id),
-    game:player(Player_id, _, Number_of_moves, _),
+    game:player(Player_id, _, Number_of_moves, _, _),
     game:insects:possible_placements(Player_id, Number_of_moves, Placements),
     Status_Code = 200.
 
@@ -130,15 +131,20 @@ getPossiblePlacements(_, _{status_code:Status_Code, placements:Placements}) :-
 getPossibleMoves(_{type:Type, id:Id,  hexagon:Hexagon}, _{status_code:Status_Code, msg:MSG}):-
     string_to_atom(Type, Type_atom),
     game:current_player(Player_id),
-    game:player(Player_id, _, _, _),
+    game:player(Player_id, _, _, _, _),
     game:insects:possible_moves(Player_id, Type_atom, Id, Hexagon, MSG, Status_Code),
     Status_Code == 400,
     !.
 getPossibleMoves(_{type:Type, id:Id, hexagon:Hexagon}, _{status_code:Status_Code, moves:Moves}):-
     string_to_atom(Type, Type_atom),
     game:current_player(Player_id),
-    game:player(Player_id, _, _, _),
+    game:player(Player_id, _, _, _, _),
     game:insects:possible_moves(Player_id, Type_atom, Id, Hexagon, Moves, Status_Code).
+
+% New Game
+newGame(_{mode:Mode, level:Level}, _{msg:MSG}):-
+    string_to_atom(Mode, ModeAtom),
+    game:new_game(ModeAtom, Level, MSG).
 
 % --------------------------------------Request Handlers--------------------------------------
 % Handle ping pong
@@ -179,8 +185,8 @@ handle_request_get_last(Req):-
 % Handle game stats
 handle_request_game_stats(_):-
     game:current_player(Current_player_id),
-    game:player(p1, Name_p1, Number_of_moves_p1, Queen_bee_placed_p1),
-    game:player(p2, Name_p2, Number_of_moves_p2, Queen_bee_placed_p2),
+    game:player(p1, Name_p1, Number_of_moves_p1, Queen_bee_placed_p1, _),
+    game:player(p2, Name_p2, Number_of_moves_p2, Queen_bee_placed_p2, _),
 
     game:insects:all_insects(_, _, p1, _, false,_, Non_placed_insects_p1),
     game:insects:all_insects(_, _, p2, _, false,_, Non_placed_insects_p2),
@@ -213,12 +219,18 @@ handle_request_game_stats(_):-
 
 % handle reset game
 handle_request_reset_game(_):-
-    game:reset_game(),
-    Res = _{msg:"ok"},
+    game:reset_game(MSG),
+    Res = _{msg:MSG},
+    reply_json_dict(Res).
+
+% handle new game
+handle_request_new_game(Req):-
+    http_read_json_dict(Req, Query),
+    newGame(Query, Res),
     reply_json_dict(Res).
 % --------------------------------------Start server--------------------------------------
 start_server(Port) :-
-    game:init_game(),
+    game:init_game(pvp, 0),%by default mode=pvp, lvl=0(beginner)
     http_server(http_dispatch, [port(Port)]).
 
 % --------------------------------------Initialization--------------------------------------
