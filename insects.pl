@@ -11,7 +11,9 @@
         init_insects/0,
         possible_placements/3,
         possible_moves/6,
-        move_insect/7
+        move_insect/7,
+        can_play/3,
+        queen_surrounded/1
     ]).
 
 % --------------------------------------MODULES--------------------------------------
@@ -28,6 +30,22 @@ other_player(p1, p2).
 other_player(p2 ,p1).
 
 % --------------------------------------METHODS--------------------------------------
+% can play | Analizes if any piece can be moved or placed and in case it cannot be passed the turn
+can_play(Player_id, Name, Number_of_moves):-
+    possible_placements(Player_id, Number_of_moves, Placements),
+    Placements == [], fail,!.
+% can_play(Player_id, Name, Number_of_moves):-
+%     possible_placements(Player_id, Number_of_moves, Placements),
+%     Placements == [], fail,!.
+can_play(_, _, _):-!.
+
+% it is fulfilled if the queen bee is sorrounded
+queen_surrounded(Player_id):-
+    insect(queen_bee, _, Player_id, Hex, true, 0),
+    amount_neighbors(Hex, Len),
+    Len == 6.
+
+
 % possibles placements
 % possible_placements(Player_id, Number_of_moves, Placements)
 possible_placements(Player_id, Number_of_moves, Placements):-
@@ -397,6 +415,11 @@ amount_common_neighbors2(Hexagon, H1, H2, Len):-
     intersection(N1, N2, Set),
     findall(X, (member(X, Set), not(member(Hexagon, Set)), not(is_an_empty_hex(X))),L),
     length(L,Len).
+
+% amount of placed neihbors of Hex
+amount_neighbors(Hex, A):-
+    get_placed_neighbors_of_hex(Hex, PN),
+    length(PN, A),!.
 
 % H2 is blocked to H1 if their two neighbors in common are placed
 road_blocked(H1, H2):-
