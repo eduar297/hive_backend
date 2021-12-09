@@ -11,11 +11,13 @@
     new_game/3, 
     next_player/0,
     increment_number_of_moves/1,
-    place_queen_bee/1
+    place_queen_bee/1,
+    play_ai/5
     ]).
 
 % --------------------------------------MODULES--------------------------------------
 :-consult(insects), import(insects).
+:-consult(ai), import(ai).
 
 % --------------------------------------DYNAMICS--------------------------------------
 :-dynamic player/6, current_player/1, mode/1, level/1.
@@ -87,3 +89,7 @@ place_queen_bee(Player_id):-
     player(Player_id, Name, Number_of_moves, Queen_bee_placed, Type_player, Game_over),
     retract(player(Player_id, Name, Number_of_moves, Queen_bee_placed, Type_player, Game_over)),
     assert(player(Player_id, Name, Number_of_moves, true, Type_player, Game_over)).
+
+play_ai(AI_id, Number_of_moves, Queen_bee_placed, Status_Code, MSG):-
+    player(AI_id, Name, Number_of_moves, Queen_bee_placed, ai, _),
+    ai:play_random(AI_id, Name, Number_of_moves, Queen_bee_placed, Status_Code, MSG).

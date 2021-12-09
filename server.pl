@@ -23,6 +23,8 @@
 :- http_handler('/hive_api/game/reset_game', handle_request_reset_game, []).
 :- http_handler('/hive_api/game/new_game', handle_request_new_game, []).
 :- http_handler('/hive_api/insect/queen_surrounded', handle_request_queen_surrounded, []).
+:- http_handler('/hive_api/ai/play', handle_request_play_ai, []).
+
 
 % get_last_insect
 % --------------------------------------METHODS--------------------------------------
@@ -174,16 +176,32 @@ queenSurrounded(_{status_code:Status_Code, msg:MSG}):-
 queenSurrounded(_{status_code:Status_Code, msg:MSG}):-
     insects:queen_surrounded(p1),
     insects:queen_surrounded(p2),
-    MSG = "Both queens locked up.",
+    MSG = "Draw!",
     Status_Code = 201,!.
 queenSurrounded(_{status_code:Status_Code, msg:MSG}):-
     insects:queen_surrounded(p1),
-    MSG = "p1's queen blocked.",
+    game:player(p2, Name, _, _, _, _),
+    string_concat(Name, " won!", MSG),
     Status_Code = 202,!.
 queenSurrounded(_{status_code:Status_Code, msg:MSG}):-
     insects:queen_surrounded(p2),
-    MSG = "p2's queen blocked.",
+    game:player(p1, Name, _, _, _, _),
+    string_concat(Name, " won!", MSG),
     Status_Code = 203,!.
+
+% Send the AI to play it if can
+
+% player(Id, Name, Number_of_moves, Queen_bee_placed, Type_player, Game_over) | Player Info | p1 is the first player and p2 is the second
+playAI(_{status_code:Status_Code, msg:MSG}):-
+    game:player(Id, _, Number_of_moves, Queen_bee_placed, ai, false),
+    game:play_ai(Id, Number_of_moves, Queen_bee_placed, Status_Code, MSG),
+    Status_Code == 200,
+    game:increment_number_of_moves(Id),
+    game:next_player(),!.
+playAI(_{status_code:Status_Code, msg:MSG}):-
+    game:player(Id, _, Number_of_moves, Queen_bee_placed, ai, false),
+    game:play_ai(Id, Number_of_moves, Queen_bee_placed, Status_Code, MSG),
+    game:next_player().
 
 % New Game
 newGame(_{mode:Mode, level:Level}, _{msg:MSG}):-
@@ -266,8 +284,13 @@ handle_request_game_stats(_):-
     reply_json_dict(Res).
 
 % handle queen sorrounded
-handle_request_queen_surrounded(Req):-
+handle_request_queen_surrounded(_):-
     queenSurrounded(Res),
+    reply_json_dict(Res).
+
+% handle play ai
+handle_request_play_ai(_):-
+    playAI(Res),
     reply_json_dict(Res).
 
 % handle reset game

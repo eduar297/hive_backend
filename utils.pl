@@ -12,7 +12,8 @@
     element_hex/2,
     flatten_hex/2,
     delete/3,
-    last_element/2
+    last_element/2,
+    print_log/1
     ]).
 
 % --------------------------------------MODULES--------------------------------------
@@ -83,3 +84,8 @@ delete_all_occurrences(X,[Y|R],[Y|R1]):-
 last_element(X,[X|[]]):-!.
 last_element(X,[_|T]):-
     last_element(X,T).
+
+print_log(Log):-
+    tell('log'),
+    print(Log),
+    told.

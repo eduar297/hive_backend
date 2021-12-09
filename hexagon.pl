@@ -9,8 +9,7 @@
         axial_neighbors/2,
         are_neighbors/2,
         anti_neighborhood/3,
-        get_QR/3,
-        is_a_hinged_hex/2
+        get_QR/3
     ]).
 
 % --------------------------------------MODULES--------------------------------------
@@ -138,18 +137,3 @@ is_connected(Hex1,Hex2,Hive):-
 axial_neighbors_in_hive(Hex,Hive,L):-
     axial_neighbors(Hex, Neighbors),
     findall(X,(member(X,Neighbors),member(X,Hive)), L).
-
-% a hexagon is hinged if it is a hinge node in the graph formed by all hexagons...
-% I remove the candidate hexagon to point of articulation 
-% and analyze if all its neighbors are still connected
-is_a_hinged_hex(Hex,Hive):-
-    axial_neighbors_in_hive(Hex,Hive,L),
-    member(H1,L),
-    member(H2,L),
-    H1 \= H2,
-    H1 \= Hex,
-    H2 \= Hex,
-    utils:delete(Hex,Hive,Hive1),
-    not(is_connected(H1,H2,Hive1)),
-    !.
-

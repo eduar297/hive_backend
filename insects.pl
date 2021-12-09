@@ -12,8 +12,9 @@
         possible_placements/3,
         possible_moves/6,
         move_insect/7,
-        can_play/3,
-        queen_surrounded/1
+        can_play/2,
+        queen_surrounded/1,
+        can_place_any_of_the_insects/3
     ]).
 
 % --------------------------------------MODULES--------------------------------------
@@ -30,13 +31,19 @@ other_player(p1, p2).
 other_player(p2 ,p1).
 
 % --------------------------------------METHODS--------------------------------------
-% can play | Analizes if any piece can be moved or placed and in case it cannot be passed the turn
-can_play(Player_id, Name, Number_of_moves):-
+can_place_any_of_the_insects(Player_id, Number_of_moves, Placements):-
     possible_placements(Player_id, Number_of_moves, Placements),
-    Placements == [], fail,!.
+    Placements \= [],!.
+
+can_move_any_of_the_insects(_, _):-
+    !.% TO DO...
+
+% can play | Analizes if any piece can be moved or placed and in case it cannot be passed the turn
 % can_play(Player_id, Name, Number_of_moves):-
-%     possible_placements(Player_id, Number_of_moves, Placements),
-%     Placements == [], fail,!.
+can_play(Player_id, Number_of_moves):-
+    not(can_place_any_of_the_insects(Player_id, Number_of_moves, _)),
+    not(can_move_any_of_the_insects(Player_id, Number_of_moves)),
+    fail,!.
 can_play(_, _, _):-!.
 
 % it is fulfilled if the queen bee is sorrounded
@@ -44,6 +51,27 @@ queen_surrounded(Player_id):-
     insect(queen_bee, _, Player_id, Hex, true, 0),
     amount_neighbors(Hex, Len),
     Len == 6.
+
+% if Hex is point of articulation
+is_point_of_articulation(Hex):-
+    get_max_lvl_in_hex(Hex, Lvl),
+    Lvl > 0,
+    !,
+    fail.
+is_point_of_articulation(Hex):-
+    get_placed_neighbors_of_hex(Hex, PNs),
+    [PN|_]=PNs,
+    all_insects(_, _, _, _, true, 0, Insects),
+    length(Insects, Len_insects0),
+    Len_insects is Len_insects0 - 1,
+    current_prolog_flag(max_tagged_integer, MaxI),
+    bfs_lvl([[PN, 0]], [Hex], MaxI, valid_adj3),!,
+    findall(Node, (node(Node, Lvl), Lvl > -1), Nodes),
+    retractall(node(_, _)),
+    length(Nodes, Len_nodes),
+    Len_nodes \= Len_insects,
+    !.
+is_point_of_articulation(_):-fail.
 
 
 % possibles placements
@@ -92,8 +120,7 @@ possible_moves(Player_id, Type, Id, Hexagon, MSG, Status_Code):-
     !.
 possible_moves(Player_id, Type, Id, Hexagon, MSG, Status_Code):-
     insect(Type, Id, Player_id, Hexagon, true, _),
-    get_hive_hexagons(Hive_hex),
-    hexagon:is_a_hinged_hex(Hexagon, Hive_hex),
+    is_point_of_articulation(Hexagon),
     MSG = "Cannot move because this would break the hive in 2.",
     Status_Code = 400,
     !.
@@ -271,7 +298,6 @@ spider_possible_moves(_, Hexagon, Moves, Status_Code):-
 
 % Put in L2 spider possible moves 
 filter_spider_moves(Hex, L1, L2):-
-    tell('log'),
     findall(Path, (
         member(X, L1), 
         hexagon:dfs_visit([[Hex]], X, Path, _, L1), 
@@ -280,8 +306,7 @@ filter_spider_moves(Hex, L1, L2):-
         is_valid_path_spider(Path)
         ), Paths),
     get_from_box(),
-    findall(H, member([H|_], Paths), L2),
-    told.
+    findall(H, member([H|_], Paths), L2).
 
 % Path = p1,p2,p3,p4 is valid if can move from p_{i} to p_{i+1}
 is_valid_path_spider(Path):-
@@ -349,7 +374,6 @@ valid_adj1([U, Lvl], A):-
     findall([V, Lvl1], 
         (
             member(V,N),
-            % can_move(U, V),
             not(road_blocked(U, V)),
             has_at_least_one_neighbor_placed(V)
         ), A).
@@ -361,12 +385,16 @@ valid_adj2([U, Lvl], A):-
     findall([V, Lvl1], 
         (
             member(V,N)
-            % can_move(U, V),
-            % not(road_blocked(U, V)),
-            % has_at_least_one_neighbor_placed(V)
         ), A).
 
+valid_adj3([U, Lvl], A):-
+    Lvl1 is Lvl + 1,
+    get_placed_neighbors_of_hex(U, N),
 
+    findall([V, Lvl1], 
+        (
+            member(V,N)
+        ), A).
 
 ladybug_possible_moves(Player_id, Hexagon, Moves, Status_Code):-
     insect(ladybug, _, Player_id, Hexagon, true,_),
@@ -489,6 +517,7 @@ all_insects(Type, Id, Player_id, Hex, Placed, Lvl, Insects):-
 % initialize insects with default values
 init_insects():-
     assert(insect(queen_bee, 1, p1, none, false, -1)),
+    
     assert(insect(queen_bee, 1, p2, none, false, -1)),
 
     assert(insect(beetle, 1, p1, none, false, -1)),
