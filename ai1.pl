@@ -1,6 +1,6 @@
 
 % ##################################################################################
-% ------------------------ARTIFICIAL INTELLIGENCE | MONTE CARLO TREE SEARCH----------------------
+% ------------------------ARTIFICIAL INTELLIGENCE | WITH HEURISTIC----------------------
 % ##################################################################################
 
 % % --------------------------------------EXPORTS--------------------------------------
@@ -25,22 +25,22 @@ play_greedy(Player_id, Name, Number_of_moves, Queen_bee_placed, Status_Code, MSG
     P2 = Other_player_id,
 
 
-    insects:all_insects(_, _, P1, _, false, _, Non_placed_insects_p1),
-    insects:all_insects(_, _, P2, _, false, _, Non_placed_insects_p2),
+    insects:all_insects(_, _, P1, _, false, _, _),
+    insects:all_insects(_, _, P2, _, false, _, _),
     
-    insects:all_insects(_, _, P1, _, true, _, Placed_insects_p1),
-    insects:all_insects(_, _, P2, _, true, _, Placed_insects_p2),
+    insects:all_insects(_, _, P1, _, true, _, _),
+    insects:all_insects(_, _, P2, _, true, _, _),
 
     analize_type_of_play(P1, Name, Number_of_moves, Queen_bee_placed, MSG, Status_Code).
 
-analize_type_of_play(Player_id, Name, Number_of_moves, Queen_bee_placed, MSG, Status_Code):-
+analize_type_of_play(Player_id, Name, Number_of_moves, _, MSG, Status_Code):-
     Number_of_moves == 0,
     insects:place_insect(Player_id, beetle, [1, 0], _),
     string_concat(Name, " places ", S1),
     string_concat(S1, beetle, MSG),
     Status_Code = 200,
     !.
-analize_type_of_play(Player_id, Name, Number_of_moves, Queen_bee_placed, MSG, Status_Code):-
+analize_type_of_play(Player_id, Name, Number_of_moves, _, MSG, Status_Code):-
     Number_of_moves == 1,
     L = [[2,-1],[1,1]],
     random_between(1, 2, Rd),
@@ -50,7 +50,7 @@ analize_type_of_play(Player_id, Name, Number_of_moves, Queen_bee_placed, MSG, St
     string_concat(S1, queen_bee, MSG),
     Status_Code = 200,
     !.
-analize_type_of_play(Player_id, Name, Number_of_moves, Queen_bee_placed, MSG, Status_Code):-
+analize_type_of_play(Player_id, Name, Number_of_moves, _, MSG, Status_Code):-
     Number_of_moves == 2,
     insects:is_an_empty_hex([2,0]),
     insects:place_insect(Player_id, soldier_ant, [2, 0], _),
@@ -60,7 +60,7 @@ analize_type_of_play(Player_id, Name, Number_of_moves, Queen_bee_placed, MSG, St
     !.
 analize_type_of_play(Player_id, Name, Number_of_moves, Queen_bee_placed, MSG, Status_Code):-
     Number_of_moves == 2,
-    insects:can_place_any_of_the_insects(Player_id, Number_of_moves, Queen_bee_placed, InsectsPlacements, Placements),
+    insects:can_place_any_of_the_insects(Player_id, Number_of_moves, Queen_bee_placed, _, Placements),
     length(Placements, Len_placements),
     random_between(1, Len_placements, Rd_placements),
     utils:element_at(Hex, Placements, Rd_placements),
@@ -69,7 +69,7 @@ analize_type_of_play(Player_id, Name, Number_of_moves, Queen_bee_placed, MSG, St
     string_concat(S1, soldier_ant, MSG),
     Status_Code = 200,
     !.
-analize_type_of_play(Player_id, Name, Number_of_moves, Queen_bee_placed, MSG, Status_Code):-
+analize_type_of_play(Player_id, Name, Number_of_moves, _, MSG, Status_Code):-
     Number_of_moves > 2,
     insects:other_player(Player_id, Other_player_id),
     insects:insect(queen_bee, 1, Other_player_id, Hex, true, 0),
@@ -93,15 +93,15 @@ analize_type_of_play(Player_id, Name, Number_of_moves, Queen_bee_placed, MSG, St
     string_concat(S1, Type, MSG),
     !.
 
-analize_type_of_play(Player_id, Name, Number_of_moves, Queen_bee_placed, MSG, Status_Code):-
+analize_type_of_play(Player_id, Name, Number_of_moves, _, MSG, Status_Code):-
     Number_of_moves > 2,
     insects:insect(queen_bee, Id1, Player_id, Hex1, true, Lvl1),
-    insects:possible_moves(Player_id, queen_bee, Id1, Hex1, Moves, SC),
+    insects:possible_moves(Player_id, queen_bee, Id1, Hex1, _, SC),
     SC == 200,
     insects:amount_neighbors(Hex1, A1),
     
     insects:other_player(Player_id, Other_player_id),
-    insects:insect(queen_bee, Id2, Other_player_id, Hex2, true, Lvl2),
+    insects:insect(queen_bee, _, Other_player_id, Hex2, true, _),
     insects:amount_neighbors(Hex2, A2),
     
     A2 < 4,
@@ -109,7 +109,7 @@ analize_type_of_play(Player_id, Name, Number_of_moves, Queen_bee_placed, MSG, St
 
     best_move([queen_bee, Id1, Player_id, Hex1, true, Lvl1], M),
     
-    (V:H)=M,
+    (_:H)=M,
 
     insects:move_insect(queen_bee, Id1, Player_id, Lvl1, Hex1, H, _),
 
@@ -117,9 +117,9 @@ analize_type_of_play(Player_id, Name, Number_of_moves, Queen_bee_placed, MSG, St
     string_concat(Name, " moves ", S1),
     string_concat(S1, queen_bee, MSG),
     !.
-analize_type_of_play(Player_id, Name, Number_of_moves, Queen_bee_placed, MSG, Status_Code):-
+analize_type_of_play(Player_id, Name, Number_of_moves, _, MSG, Status_Code):-
     Number_of_moves > 2,
-    insects:insect(queen_bee, Id1, Player_id, Hex1, true, Lvl1),
+    insects:insect(queen_bee, Id1, Player_id, Hex1, true, _),
     insects:possible_moves(Player_id, queen_bee, Id1, Hex1, _, SC),
     SC == 200,
     
@@ -143,15 +143,15 @@ analize_type_of_play(Player_id, Name, Number_of_moves, Queen_bee_placed, MSG, St
     !.
 analize_type_of_play(Player_id, Name, Number_of_moves, Queen_bee_placed, MSG, Status_Code):-
     Number_of_moves > 2,
-    insects:insect(queen_bee, Id1, Player_id, Hex1, true, Lvl1),
+    insects:insect(queen_bee, Id1, Player_id, Hex1, true, _),
     insects:possible_moves(Player_id, queen_bee, Id1, Hex1, _, SC),
     SC == 200,
 
     insects:can_place_any_of_the_insects(Player_id, Number_of_moves, Queen_bee_placed, InsectsPlacements, Placements),
     
-    findall((Score1:Type), (member([Type, Id, Player_id, none, false, -1], InsectsPlacements), insects:score(Type, Player_id, Score), Score1 is -1*Score),L),
+    findall((Score1:Type), (member([Type, _, Player_id, none, false, -1], InsectsPlacements), insects:score(Type, Player_id, Score), Score1 is -1*Score),L),
 
-    max_move_value(L, (S:T)),
+    max_move_value(L, (_:T)),
     
     length(Placements, Len_placements),
     random_between(1, Len_placements, Rd_placements),
@@ -168,9 +168,9 @@ analize_type_of_play(Player_id, Name, Number_of_moves, Queen_bee_placed, MSG, St
     string_concat(Name, " places ", S1),
     string_concat(S1, T, MSG),
     !.
-analize_type_of_play(Player_id, Name, Number_of_moves, Queen_bee_placed, MSG, Status_Code):-
+analize_type_of_play(Player_id, Name, Number_of_moves, _, MSG, Status_Code):-
     Number_of_moves > 2,
-    insects:insect(queen_bee, Id1, Player_id, Hex1, true, Lvl1),
+    insects:insect(queen_bee, Id1, Player_id, Hex1, true, _),
     insects:possible_moves(Player_id, queen_bee, Id1, Hex1, _, SC),
     SC == 200,
 
@@ -178,11 +178,7 @@ analize_type_of_play(Player_id, Name, Number_of_moves, Queen_bee_placed, MSG, St
     
     findall(([I,V,M]), (member(PN, Placed_neighbors), insects:get_last_insect(PN, I), best_move(I, M), [_,_,_,H,_,_]=I ,calculate_hexagon_total_value(H, V)), Moves),
 
-    findall([I1,V2,H2], (member([I1,V1,(V2:H2)], Moves) ), L),
-
-    tell('log1'),
-    write(L),
-    told,
+    findall([I1,V2,H2], (member([I1,_,(V2:H2)], Moves) ), L),
     
     L \= [],
 
@@ -197,9 +193,9 @@ analize_type_of_play(Player_id, Name, Number_of_moves, Queen_bee_placed, MSG, St
     string_concat(S1, Type, MSG),
     !.
 
-analize_type_of_play(Player_id, Name, Number_of_moves, Queen_bee_placed, MSG, Status_Code):-
+analize_type_of_play(Player_id, Name, Number_of_moves, _, MSG, Status_Code):-
     Number_of_moves > 2,
-    insects:insect(queen_bee, Id1, Player_id, Hex1, true, Lvl1),
+    insects:insect(queen_bee, Id1, Player_id, Hex1, true, _),
     insects:possible_moves(Player_id, queen_bee, Id1, Hex1, _, SC),
     SC == 200,
 
@@ -207,11 +203,7 @@ analize_type_of_play(Player_id, Name, Number_of_moves, Queen_bee_placed, MSG, St
     
     findall(([I,V,M]), (member(PN, Placed_neighbors), insects:get_last_insect(PN, I), best_move(I, M), [_,_,_,H,_,_]=I ,calculate_hexagon_total_value(H, V)), Moves),
 
-    findall([I1,V2,H2], (member([I1,V1,(V2:H2)], Moves) ), L),
-
-    tell('log1'),
-    write(L),
-    told,
+    findall([I1,V2,H2], (member([I1,_,(V2:H2)], Moves) ), L),
     
     L == [],
 
@@ -219,10 +211,9 @@ analize_type_of_play(Player_id, Name, Number_of_moves, Queen_bee_placed, MSG, St
     string_concat(Name, " cant't play ", MSG),
     !.
 
-
-analize_type_of_play(Player_id, Name, Number_of_moves, Queen_bee_placed, MSG, Status_Code):-
+analize_type_of_play(Player_id, Name, Number_of_moves, _, MSG, Status_Code):-
     Number_of_moves > 2,
-    insects:insect(queen_bee, Id1, Player_id, Hex1, true, Lvl1),
+    insects:insect(queen_bee, Id1, Player_id, Hex1, true, _),
     insects:possible_moves(Player_id, queen_bee, Id1, Hex1, _, SC),
     SC == 400,
     insects:get_placed_neighbors_of_player_hex(Player_id, Hex1, Placed_neighbors),
@@ -244,9 +235,9 @@ analize_type_of_play(Player_id, Name, Number_of_moves, Queen_bee_placed, MSG, St
     string_concat(S1, Type, MSG),
     !.
 
-analize_type_of_play(Player_id, Name, Number_of_moves, Queen_bee_placed, MSG, Status_Code):-
+analize_type_of_play(Player_id, Name, Number_of_moves, _, MSG, Status_Code):-
     Number_of_moves > 2,
-    insects:insect(queen_bee, Id1, Player_id, Hex1, true, Lvl1),
+    insects:insect(queen_bee, Id1, Player_id, Hex1, true, _),
     insects:possible_moves(Player_id, queen_bee, Id1, Hex1, _, SC),
     SC == 400,
     
@@ -270,15 +261,15 @@ analize_type_of_play(Player_id, Name, Number_of_moves, Queen_bee_placed, MSG, St
     !.
 analize_type_of_play(Player_id, Name, Number_of_moves, Queen_bee_placed, MSG, Status_Code):-
     Number_of_moves > 2,
-    insects:insect(queen_bee, Id1, Player_id, Hex1, true, Lvl1),
+    insects:insect(queen_bee, Id1, Player_id, Hex1, true, _),
     insects:possible_moves(Player_id, queen_bee, Id1, Hex1, _, SC),
     SC == 400,
 
     insects:can_place_any_of_the_insects(Player_id, Number_of_moves, Queen_bee_placed, InsectsPlacements, Placements),
 
-    findall((Score1:Type), (member([Type, Id, Player_id, none, false, -1], InsectsPlacements), insects:score(Type, Player_id, Score), Score1 is -1*Score),L),
+    findall((Score1:Type), (member([Type, _, Player_id, none, false, -1], InsectsPlacements), insects:score(Type, Player_id, Score), Score1 is -1*Score),L),
 
-    max_move_value(L, (S:T)),
+    max_move_value(L, (_:T)),
     
     length(Placements, Len_placements),
     random_between(1, Len_placements, Rd_placements),
@@ -296,9 +287,9 @@ analize_type_of_play(Player_id, Name, Number_of_moves, Queen_bee_placed, MSG, St
     string_concat(S1, T, MSG),
     !.
     
-analize_type_of_play(Player_id, Name, Number_of_moves, Queen_bee_placed, MSG, Status_Code):-
+analize_type_of_play(Player_id, Name, Number_of_moves, _, MSG, Status_Code):-
     Number_of_moves > 2,
-    insects:insect(queen_bee, Id1, Player_id, Hex1, true, Lvl1),
+    insects:insect(queen_bee, Id1, Player_id, Hex1, true, _),
     insects:possible_moves(Player_id, queen_bee, Id1, Hex1, _, SC),
     SC == 400,
 
@@ -306,11 +297,7 @@ analize_type_of_play(Player_id, Name, Number_of_moves, Queen_bee_placed, MSG, St
     
     findall(([I,V,M]), (member(PN, Placed_neighbors), insects:get_last_insect(PN, I), best_move(I, M), [_,_,_,H,_,_]=I ,calculate_hexagon_total_value(H, V)), Moves),
 
-    findall([I1,V2,H2], (member([I1,V1,(V2:H2)], Moves) ), L),
-
-    tell('log2'),
-    write(L),
-    told,
+    findall([I1,V2,H2], (member([I1,_,(V2:H2)], Moves) ), L),
 
     L \= [],
 
@@ -324,9 +311,10 @@ analize_type_of_play(Player_id, Name, Number_of_moves, Queen_bee_placed, MSG, St
     string_concat(Name, " moves ", S1),
     string_concat(S1, Type, MSG),
     !.
-analize_type_of_play(Player_id, Name, Number_of_moves, Queen_bee_placed, MSG, Status_Code):-
+
+analize_type_of_play(Player_id, Name, Number_of_moves, _, MSG, Status_Code):-
     Number_of_moves > 2,
-    insects:insect(queen_bee, Id1, Player_id, Hex1, true, Lvl1),
+    insects:insect(queen_bee, Id1, Player_id, Hex1, true, _),
     insects:possible_moves(Player_id, queen_bee, Id1, Hex1, _, SC),
     SC == 400,
 
@@ -334,11 +322,7 @@ analize_type_of_play(Player_id, Name, Number_of_moves, Queen_bee_placed, MSG, St
     
     findall(([I,V,M]), (member(PN, Placed_neighbors), insects:get_last_insect(PN, I), best_move(I, M), [_,_,_,H,_,_]=I ,calculate_hexagon_total_value(H, V)), Moves),
 
-    findall([I1,V2,H2], (member([I1,V1,(V2:H2)], Moves) ), L),
-
-    tell('log2'),
-    write(L),
-    told,
+    findall([I1,V2,H2], (member([I1,_,(V2:H2)], Moves) ), L),
 
     L == [],
 
@@ -348,7 +332,7 @@ analize_type_of_play(Player_id, Name, Number_of_moves, Queen_bee_placed, MSG, St
 
 
 best_move(Insect, M):-
-    [Type, Id, PlayerId, Hex, Placed, Lvl] = Insect,
+    [Type, Id, PlayerId, Hex, _, _] = Insect,
 
     insects:possible_moves(PlayerId, Type, Id, Hex, Moves, SC),
     SC == 200,
@@ -365,7 +349,7 @@ calculate_hexagon_total_value(Hex, V):-
     sum_hexagons_value(AN, V),!.
 
 calculate_play_value(Insect, HexagonEnd, Value):-
-    [Type, Id, Player_id, Hex, Placed, Lvl] = Insect,
+    [Type, Id, Player_id, Hex, _, Lvl] = Insect,
     
     insects:move_insect(Type, Id, Player_id, Lvl, Hex, HexagonEnd, _),
     hexagon:axial_neighbors(HexagonEnd, AN),
@@ -377,7 +361,7 @@ calculate_hexagon_value(Hex, 0):-
     insects:is_an_empty_hex(Hex),!.
 calculate_hexagon_value(Hex, Value):-
     insects:get_last_insect(Hex, I),
-    [Type, Id, Pid, Hex, true, Lvl] = I,
+    [Type, Id, Pid, Hex, true, _] = I,
     insects:score(Type, Pid, V),
     insects:possible_moves(Pid, Type, Id, Hex, Moves, Status_Code),
     Status_Code == 200,
@@ -386,9 +370,9 @@ calculate_hexagon_value(Hex, Value):-
     !.
 calculate_hexagon_value(Hex, Value):-
     insects:get_last_insect(Hex, I),!,
-    [Type, Id, Pid, Hex, true, Lvl] = I,
+    [Type, Id, Pid, Hex, true, _] = I,
     insects:score(Type, Pid, V),
-    insects:possible_moves(Pid, Type, Id, Hex, Moves, Status_Code),
+    insects:possible_moves(Pid, Type, Id, Hex, _, _),
     Value is 2*V,
     !.
 
@@ -398,14 +382,13 @@ sum_hexagons_value([H|T], S):-
     sum_hexagons_value(T, S2),
     S is S1 + S2.
 
-max((X1:Y1),(X2:Y2),(X1:Y1)):-
+max((X1:Y1),(X2:_),(X1:Y1)):-
     X1 >=X2,!.
-max((X1:Y1),(X2:Y2),(X2:Y2)):-!.
+max((_:_),(X2:Y2),(X2:Y2)):-!.
 
-max2([X1,Y1,Z1],[X2,Y2,Z2],[X1,Y1,Z1]):-
+max2([X1,Y1,Z1],[_,Y2,_],[X1,Y1,Z1]):-
     Y1 >=Y2,!.
-max2([X1,Y1,Z1],[X2,Y2,Z2],[X2,Y2,Z2]):-!.
-
+max2([_,_,_],[X2,Y2,Z2],[X2,Y2,Z2]):-!.
 
 max_move_value([], (0,0)):-!.
 max_move_value([(X:Y)], (X:Y)):-!.

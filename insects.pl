@@ -36,8 +36,8 @@ other_player(p2 ,p1).
 
 % --------------------------------------METHODS--------------------------------------
 
-can_place_any_of_the_insects(Player_id, Number_of_moves, Queen_bee_placed, Insects, Placements):-
-    all_insects(Type, Id, Player_id, none, false, -1, Insects),
+can_place_any_of_the_insects(Player_id, _, _, Insects, _):-
+    all_insects(_, _, Player_id, none, false, -1, Insects),
     Insects == [],
     !,fail.
 can_place_any_of_the_insects(Player_id, Number_of_moves, Queen_bee_placed, Insects, Placements):-
@@ -47,12 +47,12 @@ can_place_any_of_the_insects(Player_id, Number_of_moves, Queen_bee_placed, Insec
     Insects=[[queen_bee, Id, Player_id, none, false, -1]],
     possible_placements(Player_id, Number_of_moves, Placements),
     Placements \= [],!.
-can_place_any_of_the_insects(Player_id, Number_of_moves, Queen_bee_placed, Insects, Placements):-
-    all_insects(Type, Id, Player_id, none, false, -1, Insects),
+can_place_any_of_the_insects(Player_id, Number_of_moves, _, Insects, Placements):-
+    all_insects(_, _, Player_id, none, false, -1, Insects),
     possible_placements(Player_id, Number_of_moves, Placements),
     Placements \= [],!.
 
-can_move_any_of_the_insects(Player_id, InsectMoves):-
+can_move_any_of_the_insects(Player_id, _):-
     all_insects(_, _, Player_id, _, true, _, Insects),
     Insects == [],
     !,fail.

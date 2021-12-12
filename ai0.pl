@@ -24,7 +24,7 @@ play_random(Player_id, Name, Number_of_moves, Queen_bee_placed, Status_Code, MSG
     P2 = Other_player_id,
 
 
-    insects:all_insects(_, _, P1, _, false, _, Non_placed_insects_p1),
+    insects:all_insects(_, _, P1, _, false, _, _),
     insects:all_insects(_, _, P2, _, false, _, _),
     
     insects:all_insects(_, _, P1, _, true, _, _),
@@ -105,9 +105,9 @@ move(Player_id, Name, InsectMoves, MSG, Status_Code):-
 
     insects:get_last_insect(Hexagon_Ori, Insect),
 
-    [Type, Id, Pid, Hex, true, Lvl] = Insect,
+    [Type, Id, _, _, true, Lvl] = Insect,
 
-    insects:move_insect(Type, Id, Player_id, Lvl, Hexagon_Ori, Hexagon_End, InsectRes),
+    insects:move_insect(Type, Id, Player_id, Lvl, Hexagon_Ori, Hexagon_End, _),
 
     string_concat(Name, " moves ", S1),
     string_concat(S1, Type, MSG),
