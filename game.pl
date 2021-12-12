@@ -17,7 +17,8 @@
 
 % --------------------------------------MODULES--------------------------------------
 :-consult(insects), import(insects).
-:-consult(ai), import(ai).
+:-consult(ai0), import(ai0).%lvl = easy | random
+:-consult(ai1), import(ai1). %lvl = medium | greedy
 
 % --------------------------------------DYNAMICS--------------------------------------
 :-dynamic player/6, current_player/1, mode/1, level/1.
@@ -91,5 +92,14 @@ place_queen_bee(Player_id):-
     assert(player(Player_id, Name, Number_of_moves, true, Type_player, Game_over)).
 
 play_ai(AI_id, Number_of_moves, Queen_bee_placed, Status_Code, MSG):-
+    level(Lvl),
+    Lvl == 0,
     player(AI_id, Name, Number_of_moves, Queen_bee_placed, ai, _),
-    ai:play_random(AI_id, Name, Number_of_moves, Queen_bee_placed, Status_Code, MSG).
+    ai0:play_random(AI_id, Name, Number_of_moves, Queen_bee_placed, Status_Code, MSG),
+    !.
+play_ai(AI_id, Number_of_moves, Queen_bee_placed, Status_Code, MSG):-
+    level(Lvl),
+    Lvl == 1,
+    player(AI_id, Name, Number_of_moves, Queen_bee_placed, ai, _),
+    ai1:play_greedy(AI_id, Name, Number_of_moves, Queen_bee_placed, Status_Code, MSG),
+    !.

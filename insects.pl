@@ -6,45 +6,73 @@
 :- module(insects, 
     [
         insect/6,
+        score/3,
         place_insect/4,
         all_insects/7,
         init_insects/0,
         possible_placements/3,
         possible_moves/6,
         move_insect/7,
-        can_play/2,
         queen_surrounded/1,
-        can_place_any_of_the_insects/3
+        can_place_any_of_the_insects/5,
+        can_move_any_of_the_insects/2,
+        move_to_box/1,
+        get_from_box/0,
+        get_placed_neighbors_of_player_hex/3
     ]).
 
 % --------------------------------------MODULES--------------------------------------
 :-consult(hexagon), import(hexagon).
 
 % --------------------------------------DYNAMICS--------------------------------------
-:-dynamic insect/6, box/1, node/2.
+:-dynamic insect/6, box/1, node/2, score/3.
 % box(L). %is to save one predicate temporarily
 % insect(Type, Id, PlayerId, Hex=[Q,R], Placed, Lvl)
 % node(Hex, Lvl in Bfs) is used by bfs_lvl
 
-% other player id
+% other player idInsectMoves
 other_player(p1, p2).
 other_player(p2 ,p1).
 
 % --------------------------------------METHODS--------------------------------------
-can_place_any_of_the_insects(Player_id, Number_of_moves, Placements):-
+
+can_place_any_of_the_insects(Player_id, Number_of_moves, Queen_bee_placed, Insects, Placements):-
+    all_insects(Type, Id, Player_id, none, false, -1, Insects),
+    Insects == [],
+    !,fail.
+can_place_any_of_the_insects(Player_id, Number_of_moves, Queen_bee_placed, Insects, Placements):-
+    Number_of_moves == 3,
+    Queen_bee_placed == false,
+    insect(queen_bee, Id, Player_id, none, false, -1),!,
+    Insects=[[queen_bee, Id, Player_id, none, false, -1]],
+    possible_placements(Player_id, Number_of_moves, Placements),
+    Placements \= [],!.
+can_place_any_of_the_insects(Player_id, Number_of_moves, Queen_bee_placed, Insects, Placements):-
+    all_insects(Type, Id, Player_id, none, false, -1, Insects),
     possible_placements(Player_id, Number_of_moves, Placements),
     Placements \= [],!.
 
-can_move_any_of_the_insects(_, _):-
-    !.% TO DO...
+can_move_any_of_the_insects(Player_id, InsectMoves):-
+    all_insects(_, _, Player_id, _, true, _, Insects),
+    Insects == [],
+    !,fail.
+can_move_any_of_the_insects(Player_id, InsectMoves):-
+    all_insects(_, _, Player_id, _, true, _, Insects),
+    findall((Hexagon:Moves), (
+        member([Type, Id, _, Hexagon, _, _], Insects),
+        possible_moves(Player_id, Type, Id, Hexagon, Moves, Status_Code), 
+        Status_Code == 200
+        ), InsectMoves),
+    InsectMoves \= [],
+    !.
 
 % can play | Analizes if any piece can be moved or placed and in case it cannot be passed the turn
 % can_play(Player_id, Name, Number_of_moves):-
-can_play(Player_id, Number_of_moves):-
-    not(can_place_any_of_the_insects(Player_id, Number_of_moves, _)),
-    not(can_move_any_of_the_insects(Player_id, Number_of_moves)),
-    fail,!.
-can_play(_, _, _):-!.
+% can_play(Player_id, Number_of_moves):-
+%     not(can_place_any_of_the_insects(Player_id, Number_of_moves, _)),
+%     not(can_move_any_of_the_insects(Player_id, Number_of_moves)),
+%     fail,!.
+% can_play(_, _, _):-!.
 
 % it is fulfilled if the queen bee is sorrounded
 queen_surrounded(Player_id):-
@@ -72,7 +100,6 @@ is_point_of_articulation(Hex):-
     Len_nodes \= Len_insects,
     !.
 is_point_of_articulation(_):-fail.
-
 
 % possibles placements
 % possible_placements(Player_id, Number_of_moves, Placements)
@@ -296,7 +323,7 @@ spider_possible_moves(_, Hexagon, Moves, Status_Code):-
     filter_spider_moves(Hexagon, Moves1, Moves),
     Status_Code = 200.
 
-% Put in L2 spider possible moves 
+% Put in L2 spider possible moves Status_Code
 filter_spider_moves(Hex, L1, L2):-
     findall(Path, (
         member(X, L1), 
@@ -347,7 +374,7 @@ soldier_ant_possible_moves(Player_id, Hexagon, Moves, Status_Code):-
     get_void_neighbors_of_hex_2(Hexagon, VN),
     findall(X, (member(X, VN), not(can_move(Hexagon, X))), L),
     utils:delete2(L, Moves0, Moves),
-    Status_Code = 200.
+    Status_Code = 200,!.
 
 % bfs (Queue, Visited, Lvl, AdjPred) | Expand the search as long as it does not exceed the Lvl. Uses AdjPred to find adj hexagons
 bfs_lvl([], _, _, _):-!.
@@ -427,6 +454,10 @@ get_void_neighbors_of_hex_2(Hex, Void_neighbors):-
 get_placed_neighbors_of_hex(Hex, Placed_neighbors):-
     hexagon:axial_neighbors(Hex, Neighbors),
     findall(H, insect(_, _, _, H, true, 0), Hexagons),
+    findall(X, (member(X, Neighbors), member(X, Hexagons)), Placed_neighbors).
+get_placed_neighbors_of_player_hex(Player_id, Hex, Placed_neighbors):-
+    hexagon:axial_neighbors(Hex, Neighbors),
+    findall(H, insect(_, _, Player_id, H, true, 0), Hexagons),
     findall(X, (member(X, Neighbors), member(X, Hexagons)), Placed_neighbors).
 
 % amount of common neihbors | Len = 0 or 1 or 2
@@ -517,13 +548,16 @@ all_insects(Type, Id, Player_id, Hex, Placed, Lvl, Insects):-
 % initialize insects with default values
 init_insects():-
     assert(insect(queen_bee, 1, p1, none, false, -1)),
-    
     assert(insect(queen_bee, 1, p2, none, false, -1)),
+    assert(score(queen_bee, p1, 30)),
+    assert(score(queen_bee, p2, -30)),
 
     assert(insect(beetle, 1, p1, none, false, -1)),
     assert(insect(beetle, 2, p1, none, false, -1)),
     assert(insect(beetle, 1, p2, none, false, -1)),
     assert(insect(beetle, 2, p2, none, false, -1)),
+    assert(score(beetle, p1, 6)),
+    assert(score(beetle, p2, -6)),
 
     assert(insect(grasshopper, 1, p1, none, false, -1)),
     assert(insect(grasshopper, 2, p1, none, false, -1)),
@@ -531,11 +565,15 @@ init_insects():-
     assert(insect(grasshopper, 1, p2, none, false, -1)),
     assert(insect(grasshopper, 2, p2, none, false, -1)),
     assert(insect(grasshopper, 3, p2, none, false, -1)),
+    assert(score(grasshopper, p1, 2)),
+    assert(score(grasshopper, p2, -2)),
 
     assert(insect(spider, 1, p1, none, false, -1)),
     assert(insect(spider, 2, p1, none, false, -1)),
     assert(insect(spider, 1, p2, none, false, -1)),
     assert(insect(spider, 2, p2, none, false, -1)),
+    assert(score(spider, p1, 4)),
+    assert(score(spider, p2, -4)),
 
     assert(insect(soldier_ant, 1, p1, none, false, -1)),
     assert(insect(soldier_ant, 2, p1, none, false, -1)),
@@ -543,15 +581,19 @@ init_insects():-
     assert(insect(soldier_ant, 1, p2, none, false, -1)),
     assert(insect(soldier_ant, 2, p2, none, false, -1)),
     assert(insect(soldier_ant, 3, p2, none, false, -1)),
+    assert(score(soldier_ant, p1, 8)),
+    assert(score(soldier_ant, p2, -8)),
 
-    assert(insect(ladybug, 1, p1, none, false, -1)),
-    assert(insect(ladybug, 1, p2, none, false, -1)),
+    % assert(insect(ladybug, 1, p1, none, false, -1)),
+    % assert(insect(ladybug, 1, p2, none, false, -1)),
 
-    assert(insect(mosquito, 1, p1, none, false, -1)),
-    assert(insect(mosquito, 1, p2, none, false, -1)),
+    % assert(insect(mosquito, 1, p1, none, false, -1)),
+    % assert(insect(mosquito, 1, p2, none, false, -1)),
 
-    assert(insect(pillbug, 1, p1, none, false, -1)),
-    assert(insect(pillbug, 1, p2, none, false, -1)).
+    % assert(insect(pillbug, 1, p1, none, false, -1)),
+    % assert(insect(pillbug, 1, p2, none, false, -1)).
+    
+    !.
 
 % if Hex is empty
 is_an_empty_hex(Hex):-
